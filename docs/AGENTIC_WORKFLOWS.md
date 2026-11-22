@@ -1,6 +1,8 @@
 # Agentic Workflows & Quality Playbook — Sheep Skate
 
 > Grounded in `/agentic-best-practices` and `/best-practices` for reliable AI-assisted development on **Sheep Skate**.
+>
+> **Mandatory Commit Policy:** All agents must follow [`agentic.md`](../agentic.md) — **COMMIT EACH VERIFIED STEP ATOMICALLY** using `<type>(<scope>): <summary>`. Never bundle multiple steps into a bulky commit.
 
 ---
 
@@ -24,27 +26,29 @@ Apply review depth proportional to blast radius and subtlety:
 flowchart TD
     A["Create Feature Branch"] --> B["Read Relevant Docs & Target Files"]
     B --> C["Write Failing Sim / Command Test First"]
-    C --> D["Implement Minimal Solution"]
-    D --> E["Run File-Scoped Checks (tsc / eslint / single test)"]
-    E --> F{"Checks Pass?"}
-    F -->|"No"| D
-    F -->|"Yes"| G["AI Self-Review Against AGENTS.md"]
-    G --> H["Refactor & Verify Invariants (GPU / Zero-Alloc / XSS)"]
-    H --> I["Run Full Suite & Visual WebGL Check"]
-    I --> J{"All Pass?"}
-    J -->|"No"| H
-    J -->|"Yes"| K["Commit & Human Review"]
+    C --> D["Verify & Commit Test Step (test)"]
+    D --> E["Implement Minimal Solution Step"]
+    E --> F["Run File-Scoped Checks (tsc / eslint / single test)"]
+    F --> G{"Checks Pass?"}
+    G -->|"No"| E
+    G -->|"Yes"| H["Commit Step Atomically per agentic.md"]
+    H --> I{"More Steps Remaining?"}
+    I -->|"Yes"| C
+    I -->|"No"| J["AI Self-Review & Full Suite Check"]
+    J --> K{"All Pass?"}
+    K -->|"No"| E
+    K -->|"Yes"| L["Human Review / PR"]
 ```
 
 ### Bug Fix Workflow
-1. **Reproduce:** Write a deterministic test (e.g., delete grinding sheep -> undo -> step `grindStep()`) that throws or fails before touching production code.
+1. **Reproduce:** Write a deterministic test (e.g., delete grinding sheep -> undo -> step `grindStep()`) that throws or fails before touching production code; optionally commit the isolated failing regression test (`test(scope): ...`) or keep paired strictly with its one-line fix.
 2. **Isolate:** Pinpoint the exact invariant violation in `src/sim/`, `src/editor/`, or `src/render/`.
 3. **Fix:** Apply the smallest surgical change solving the root cause.
-4. **Verify & Regress:** Confirm the reproduction test passes and add edge-case assertions (e.g., undo -> redo -> undo).
+4. **Verify & Commit Step:** Confirm the reproduction and edge-case tests pass, then immediately commit **only** that bug fix (`fix(<scope>): <summary>`) per [`agentic.md`](../agentic.md) before moving to any other bug.
 
 ### Safe Refactoring Workflow (Extraction from `index.html`)
 1. Record visual/behavioral baseline first (trick heights, `"BAA"` plaza, `9` initial sheep, lighting).
-2. Move one pure module at a time (`math` -> `sim` -> `audio` -> `render` -> `ui`).
+2. Extract **one** pure module per commit (`math` -> commit -> `sim` -> commit -> `audio` -> commit -> `render` -> commit -> `ui` -> commit).
 3. Never mix structural extraction with physics constant tweaks or visual redesigns in the same commit.
 
 ---

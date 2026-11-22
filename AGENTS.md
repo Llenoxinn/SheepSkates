@@ -33,6 +33,7 @@ Reference these tags in reasoning and PR notes when trade-offs arise:
 - **Simulation Isolation (Target `src/sim/`):** `src/sim/` **must never** import `three`, `window`, `document`, or Web Audio APIs. Communicate with `src/render/` and `src/audio/` via plain numeric snapshots and typed domain events.
 - **Validate External Input:** Every imported park JSON file or URL state payload must be validated with a strict Zod schema (finite numbers, bounded array lengths, valid enum states) before touching scene state.
 - **No Unpinned Production CDNs / No Secrets:** Bundle `three` locally once Vite is introduced; never commit API keys or secrets.
+- **Commit Each Step Atomically (No Bulky Commits):** Follow [`agentic.md`](agentic.md) — commit immediately after every completed, verified step using `<type>(<scope>): <summary>` (e.g., `fix(editor): preserve grind state on undo`). Never bundle multiple unrelated steps or phases into one bulky commit.
 
 ### Important Rules (Follow Unless Justified)
 - **World Coordinate Contract:** Y-up, `1` world unit `= 1` m. Sheep heading `0` faces `+Z` (`dx = Math.sin(heading)`, `dz = Math.cos(heading)`). Island bounds are `IW = 26`, `IH = 18`, player clamp `|x| <= 12.1`, `|z| <= 8.1`.
@@ -43,7 +44,7 @@ Reference these tags in reasoning and PR notes when trade-offs arise:
 
 ### Preferences (Default Behavior)
 - Use explicit return types on exported functions, `named exports` over `default`, and `@/` path alias once `tsconfig.json` is added.
-- Use Conventional Commits (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `perf:`).
+- Follow the mandatory step-by-step commit format in [`agentic.md`](agentic.md) (`feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `chore`, `style`).
 
 ---
 
@@ -143,6 +144,7 @@ npm run test:e2e                         # Headless Playwright WebGL smoke suite
 - **Scene Graph, Physics & Perf:** [3D Architecture](docs/3D_ARCHITECTURE.md)
 - **Palette, Shaders, UI & Web Audio:** [Art & Audio Direction](docs/ART_AND_AUDIO_DIRECTION.md)
 - **Known Bugs & Phased Roadmap:** [Implementation Plan](docs/IMPLEMENTATION_PLAN.md)
+- **Agent Commit & Step Protocol:** [`agentic.md`](agentic.md)
 - **AI Workflows, Prompts & QA:** [Agentic Workflows](docs/AGENTIC_WORKFLOWS.md)
 - **Architecture Decisions:** [ADR Index](docs/adr/README.md)
 

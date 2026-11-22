@@ -70,6 +70,7 @@ Then open `http://localhost:3000` (for `serve`) or `http://localhost:8000` (for 
 | Document | Purpose |
 | :--- | :--- |
 | [`AGENTS.md`](AGENTS.md) | Concise AI-agent constitution: rules, coordinate conventions, hot-loop guardrails, commands, and context links |
+| [`agentic.md`](agentic.md) | Mandatory step-by-step atomic commit rule (**commit each step**, no bulky commits) and commit format |
 | [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md) | Design pillars, core loops, sheep state machine, trick/combo math, park zones, and game modes |
 | [`docs/3D_ARCHITECTURE.md`](docs/3D_ARCHITECTURE.md) | Three.js scene graph, sheep transform hierarchy, target `src/` module boundaries, physics engine, and perf budgets |
 | [`docs/ART_AND_AUDIO_DIRECTION.md`](docs/ART_AND_AUDIO_DIRECTION.md) | Visual tokens, typography, procedural texture & Web Audio synthesis specs, UI motion, and mobile accessibility |
