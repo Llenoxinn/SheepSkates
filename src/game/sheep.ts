@@ -83,8 +83,9 @@ export interface SheepWorld {
   readonly selected: Sheep | null;
   keys: Readonly<Record<string, boolean>>;
   cameraForward(out: THREE.Vector3): THREE.Vector3;
-  puff(p: THREE.Vector3, n: number, spread?: number, size?: number): void;
+  puff(p: THREE.Vector3, n: number, spread?: number, size?: number, tint?: string): void;
   spark(x: number, y: number, z: number, dx: number, dz: number): void;
+  speedLine(x: number, y: number, z: number, heading: number, speed: number): void;
   award(name: string, pts: number, x: number, y: number, z: number, big?: boolean, cls?: string): void;
   popText(x: number, y: number, z: number, text: string, cls?: string): void;
   bumpCones(s: Sheep): void;
@@ -205,9 +206,9 @@ export class Sheep {
   private land(w: SheepWorld, impactSpeed = 5.5) {
     this.y = 0; this.vy = 0; this.inAir = false; this.flip = 0; this.spin = 0; this.pitch = 0;
     this.sqV -= Math.min(9, 4 + this.airT * 6);
-    w.puff(this.pos, 7, 1.6, 1);
     const onConcrete = isOnPlaza(this.pos.x, this.pos.z);
     const impact = clamp(impactSpeed / 6.5, 0.55, 1.55);
+    w.puff(this.pos, Math.round(7 + impact * 5), 1.4 + impact * 0.55, 0.85 + impact * 0.35);
     Sfx.land(onConcrete ? 'concrete' : 'grass', impact);
     if (this.trick === 'drop' || this.trick === 'grindout' || (w.selected === this && impactSpeed > 5.4)) {
       const amt = this.trick === 'drop' ? 0.13 : this.trick === 'grindout' ? 0.095 : clamp((impactSpeed - 4.8) * 0.038, 0.035, 0.1);
@@ -246,11 +247,12 @@ export class Sheep {
     const S = (goingB ? RAIL.a : RAIL.b).clone(), E = (goingB ? RAIL.b : RAIL.a).clone(), dir = E.clone().sub(S).normalize();
     this.grind = { phase: 'up', S, E, dir, L: S.distanceTo(E), P: S.clone(), ang: Math.atan2(dir.x, dir.z), s: (this.pos.x - S.x) * dir.x, after: 'ride' };
     this.state = 'grind'; w.onStateChanged(this);
-    this.landRail(); return true;
+    this.landRail(w); return true;
   }
-  private landRail() {
+  private landRail(w: SheepWorld) {
     const g = this.grind!; this.onRail = true; this.inAir = false; this.vy = 0; this.y = RAIL_Y; this.trick = null; this.flip = 0; this.spin = 0;
     g.phase = 'slide'; this.slideYawT = Math.PI / 2; this.sqV -= 5; this.speed = Math.max(this.speed, 2.6);
+    for (let i = 0; i < 10; i++) w.spark(this.pos.x, RAIL.top + 0.02, this.pos.z, g.dir.x, g.dir.z);
     Sfx.clank(); Sfx.startHiss();
   }
   /** Returns a seek target, or null when the grind drives movement itself. */
@@ -265,7 +267,7 @@ export class Sheep {
       this.speed = damp(this.speed, 2.9, 2, dt);
       p.x = g.S.x + g.dir.x * g.s; p.z = g.S.z + g.dir.z * g.s;
       this.heading = g.ang;
-      if (Math.random() < dt * 140) w.spark(p.x, RAIL.top + 0.02, p.z, g.dir.x, g.dir.z);
+      if (Math.random() < dt * 170) w.spark(p.x, RAIL.top + 0.02, p.z, g.dir.x, g.dir.z);
       if (g.s >= g.L - 0.05) {
         this.onRail = false; this.slideYawT = 0; Sfx.stopHiss();
         this.vy = 4.2; this.inAir = true; this.airT = 0; this.airDur = 0.5; this.trick = 'grindout'; g.phase = 'out'; this.sqV += 5;
@@ -370,13 +372,21 @@ export class Sheep {
       }
       this.pitch = -0.5 * Math.sin(clamp(this.airT / 0.36, 0, 1) * Math.PI);
       const g = this.grind, crossing = this.vy < 0 && this.y <= RAIL_Y && yPrev >= RAIL_Y - 0.06;
-      if (this.state === 'grind' && g && g.phase === 'up' && crossing && g.s > -0.45 && g.s < g.L - 0.4) this.landRail();
+      if (this.state === 'grind' && g && g.phase === 'up' && crossing && g.s > -0.45 && g.s < g.L - 0.4) this.landRail(w);
       else if (this.state === 'ride' && crossing && this.catchRail(w)) { /* now sliding */ }
       else if (this.y <= 0 && this.vy < 0) this.land(w, Math.abs(this.vy));
     } else if (this.onRail) this.y = RAIL_Y;
 
     if (!this.inAir) w.bumpCones(this);
     this.animate(dt, t, prevH);
+    if (!this.inAir && !this.onRail && Math.abs(this.turnRate) > 2.2 && this.speed > 2.5 && Math.random() < dt * 14) {
+      w.puff(this.pos, Math.random() < 0.5 ? 1 : 2, 0.75, 0.55);
+    }
+    if (!this.onRail && ((this.state === 'ride' && this.speed > 3.0) || this.speed > 3.2)) {
+      if (Math.random() < dt * ((this.speed - 2.8) * 26)) {
+        w.speedLine(this.pos.x, this.y, this.pos.z, this.heading, this.speed);
+      }
+    }
   }
 
   private ride(dt: number, w: SheepWorld) {
