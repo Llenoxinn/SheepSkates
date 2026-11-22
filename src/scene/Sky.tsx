@@ -5,6 +5,7 @@ import { useFrame } from '@react-three/fiber';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { baked } from '../game/textures';
 import { clamp } from '../game/math';
+import { envState } from '../game/weather';
 
 /* ------------------------------------------------------------------ */
 /* Sky dome shader (sunlit storybook gradient)                         */
@@ -28,6 +29,8 @@ uniform vec3 uLowerMid;
 uniform vec3 uNadir;
 uniform vec3 uSunDir;
 uniform vec3 uSunColor;
+uniform vec3 uFogColor;
+uniform float uFogMix;
 varying vec3 vWorldDir;
 
 void main() {
@@ -50,7 +53,8 @@ void main() {
   float horizonBand = exp(-pow((y + 0.68) * 4.0, 2.0));
   float sideWarmth = smoothstep(-0.2, 0.85, -dir.x) * horizonBand * 0.05;
 
-  col += uSunColor * (sunHalo + sideWarmth);
+  col += uSunColor * (sunHalo + sideWarmth) * (1.0 - uFogMix * 0.85);
+  col = mix(col, uFogColor, uFogMix * smoothstep(0.45, -0.82, y));
 
   // Stay below Bloom luminanceThreshold (0.92) for soft matte storybook sky
   col = min(col, vec3(0.89));
@@ -200,10 +204,12 @@ function getSkyAssets(): SkyAssets {
         uNadir: { value: new THREE.Color('#dfd2bc') },
         uSunDir: { value: SUN_DIR.clone() },
         uSunColor: { value: new THREE.Color('#fff1d6') },
+        uFogColor: { value: new THREE.Color('#ebe4d6') },
+        uFogMix: { value: 0 },
       },
     }),
     cloudGeos: CLOUD_PUFFS.map(buildCloudGeometry),
-    cloudMat: new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }),
+    cloudMat: new THREE.MeshBasicMaterial({ vertexColors: true, fog: true }),
   }));
 }
 
@@ -215,12 +221,25 @@ export function Sky(): ReactElement {
   useFrame((state, dt) => {
     const step = Math.min(dt, 0.1);
     const t = state.clock.elapsedTime;
+    const u = assets.domeMat.uniforms;
+    (u.uZenith!.value as THREE.Color).copy(envState.zenith);
+    (u.uUpperSky!.value as THREE.Color).copy(envState.upperSky);
+    (u.uMidSky!.value as THREE.Color).copy(envState.midSky);
+    (u.uHorizon!.value as THREE.Color).copy(envState.horizon);
+    (u.uLowerMid!.value as THREE.Color).copy(envState.lowerMid);
+    (u.uNadir!.value as THREE.Color).copy(envState.nadir);
+    (u.uSunColor!.value as THREE.Color).copy(envState.sunColor);
+    (u.uFogColor!.value as THREE.Color).copy(envState.fogColor);
+    u.uFogMix!.value = envState.fogSkyMix;
+    assets.cloudMat.color.copy(envState.cloudTint);
+
+    const windMult = 1 + envState.wind * 0.75;
     const refs = cloudRefs.current;
     for (let i = 0; i < CLOUDS.length; i++) {
       const mesh = refs[i];
       if (!mesh) continue;
       const c = CLOUDS[i]!;
-      let nx = mesh.position.x + c.speed * step;
+      let nx = mesh.position.x + c.speed * windMult * step;
       if (nx > WRAP_HALF) nx -= WRAP_SPAN;
       mesh.position.x = nx;
       mesh.position.y = c.y + Math.sin(t * 0.45 + c.phase) * c.bobAmp;

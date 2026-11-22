@@ -4,6 +4,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Environment, Lightformer, OrbitControls, SoftShadows } from '@react-three/drei';
 import { Bloom, EffectComposer, HueSaturation, N8AO, SMAA, TiltShift2, ToneMapping, Vignette } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
+import { envState } from '../game/weather';
 import { world } from '../game/world';
 
 const TARGET = new THREE.Vector3(0.4, 0, 0.6);
@@ -12,10 +13,36 @@ const _prevShake = new THREE.Vector3();
 
 /** Warm key light with soft PCSS shadows + studio lightformer environment (no HDR download). */
 export function Lighting() {
+  const hemiRef = useRef<THREE.HemisphereLight>(null);
+  const dirRef = useRef<THREE.DirectionalLight>(null);
+  const fogRef = useRef<THREE.FogExp2>(null);
+  const scene = useThree(s => s.scene);
+
+  useFrame(() => {
+    if (hemiRef.current) {
+      hemiRef.current.color.copy(envState.hemiSky);
+      hemiRef.current.groundColor.copy(envState.hemiGround);
+      hemiRef.current.intensity = envState.hemiIntensity;
+    }
+    if (dirRef.current) {
+      dirRef.current.color.copy(envState.dirColor);
+      dirRef.current.intensity = envState.dirIntensity;
+    }
+    if (fogRef.current) {
+      fogRef.current.color.copy(envState.fogColor);
+      fogRef.current.density = envState.fogDensity;
+    }
+    if (scene.background instanceof THREE.Color) {
+      scene.background.copy(envState.horizon);
+    }
+  });
+
   return (
     <>
-      <hemisphereLight args={['#fff3df', '#6b8a48', 1.1]} />
+      <fogExp2 ref={fogRef} attach="fog" args={['#dfe9f0', 0.0004]} />
+      <hemisphereLight ref={hemiRef} args={['#fff3df', '#6b8a48', 1.1]} />
       <directionalLight
+        ref={dirRef}
         position={[-9, 20, 9]} intensity={3.4} color="#ffebcc" castShadow
         shadow-mapSize={[2048, 2048]} shadow-bias={-0.0004} shadow-normalBias={0.02}
         shadow-camera-left={-17} shadow-camera-right={17} shadow-camera-top={14} shadow-camera-bottom={-14}
