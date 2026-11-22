@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { useAppPhase } from './appPhase';
 import { BOARD_COLORS, BOUNDS, BUSHES, isOnPlaza, PLAZA_TOP, POND, type Obstacle } from './config';
 import { clamp, damp, pick, rand, wrapA } from './math';
 import {
@@ -150,7 +151,7 @@ class World implements SheepWorld {
   }
 
   /* ---------------- SheepWorld services ---------------- */
-  get livePlay(): boolean { const p = useUI.getState().phase; return !p || p === 'playing'; }
+  get livePlay(): boolean { return useAppPhase.getState().phase === 'playing'; }
   cameraForward(out: THREE.Vector3) {
     if (!this.camera) return out.set(0, 0, -1);
     this.camera.getWorldDirection(out); out.y = 0; return out.normalize();
