@@ -541,11 +541,11 @@ export class Sheep {
       const dh = wrapA(Math.atan2(dx, dz) - this.heading);
       const turnCap = 5 * (1 - 0.24 * ice);
       this.heading += clamp(dh, -turnCap * dt, turnCap * dt);
-      const maxRide = 4.6 * (1 - 0.36 * rain) * (1 + 0.1 * ice);
-      const accel = 2.4 * (1 - 0.35 * rain) * (1 - 0.35 * ice);
+      const maxRide = 4.6 * (1 - 0.36 * rain) * (1 + 0.14 * ice);
+      const accel = 2.4 * (1 - 0.35 * rain) * (1 - 0.1 * ice);
       this.speed = damp(this.speed, maxRide * (1 - Math.min(0.5, Math.abs(dh) / Math.PI)), accel, dt);
     } else {
-      const coastDamp = 0.9 * (1 - 0.84 * ice) + 0.95 * rain;
+      const coastDamp = 0.9 * (1 - 0.88 * ice) + 0.95 * rain;
       this.speed = damp(this.speed, 0, coastDamp, dt);
     }
   }
