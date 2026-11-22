@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { CONES, isOnPlaza, LEDGE, PLAZA_TOP, QUARTER_PIPES, RAIL, RAIL_Y, TREES, type Obstacle } from './config';
 import { clamp, easeInBack, easeOutBack, rng } from './math';
+import { envState } from './weather';
 
 export type PropKind = 'ramp' | 'rail' | 'ledge' | 'cone' | 'bench' | 'tree';
 
@@ -93,11 +94,60 @@ const PROP_GEO = {
   unitBox: new THREE.BoxGeometry(1, 1, 1),
 };
 
+type SeasonalTreeMat = {
+  mat: THREE.MeshStandardMaterial;
+  spring: THREE.Color;
+  summer: THREE.Color;
+  autumn: THREE.Color;
+  winter: THREE.Color;
+};
+
 let plywoodMaps: { normalMap: THREE.Texture; roughnessMap: THREE.Texture } | null = null;
 const rampMats = new Map<string, THREE.MeshStandardMaterial>();
-const treeMats = new Map<string, THREE.MeshStandardMaterial>();
+const treeMats = new Map<string, SeasonalTreeMat>();
 const ledgeMats = new Map<string, THREE.MeshStandardMaterial>();
 const railMats = new Map<string, THREE.MeshStandardMaterial>();
+const _treeCol = new THREE.Color();
+
+const SPRING_TREE_PALETTE = ['#f5a2c2', '#f8c3d8', '#ffe7f1', '#77cb58', '#f292b7'] as const;
+const AUTUMN_TREE_PALETTE = ['#eb762d', '#f2993a', '#e8b339', '#d25138', '#e68432'] as const;
+
+function getSeasonalTreeMat(
+  summerHex: string,
+  treeSeed: number,
+  shadeOffset: number,
+  isCrown: boolean,
+): THREE.MeshStandardMaterial {
+  const bucket = Math.abs(treeSeed) % 5;
+  const key = `${summerHex}:${bucket}:${isCrown ? 1 : 0}`;
+  const existing = treeMats.get(key);
+  if (existing) return existing.mat;
+
+  const summer = new THREE.Color(summerHex);
+  const isPinkBase = summer.r > summer.g;
+  const springBaseHex = isPinkBase ? '#f7a5c5' : SPRING_TREE_PALETTE[bucket]!;
+  const spring = new THREE.Color(springBaseHex).offsetHSL(0, 0, shadeOffset);
+  const autumn = new THREE.Color(AUTUMN_TREE_PALETTE[bucket]!).offsetHSL(0, 0, shadeOffset);
+  const winter = isCrown
+    ? new THREE.Color('#ebf2fa').offsetHSL(0, 0, shadeOffset * 0.25)
+    : new THREE.Color('#648b83').offsetHSL(0, 0, shadeOffset * 0.5);
+
+  const mat = new THREE.MeshStandardMaterial({ color: summer, roughness: 0.85 });
+  treeMats.set(key, { mat, spring, summer, autumn, winter });
+  return mat;
+}
+
+export function updateSeasonalProps(): void {
+  const { spring: ws, summer: wsu, autumn: wa, winter: ww } = envState;
+  for (const entry of treeMats.values()) {
+    _treeCol.setRGB(
+      entry.spring.r * ws + entry.summer.r * wsu + entry.autumn.r * wa + entry.winter.r * ww,
+      entry.spring.g * ws + entry.summer.g * wsu + entry.autumn.g * wa + entry.winter.g * ww,
+      entry.spring.b * ws + entry.summer.b * wsu + entry.autumn.b * wa + entry.winter.b * ww,
+    );
+    entry.mat.color.copy(_treeCol);
+  }
+}
 
 const PROP_MAT = {
   coping: new THREE.MeshStandardMaterial({ color: '#c9ced8', metalness: 0.9, roughness: 0.28 }),
@@ -293,11 +343,13 @@ export class ParkProp {
       const canopy = new THREE.Group();
       canopy.position.y = 0.7 * s;
       const r = rng((Math.round(this.x * 100) + Math.round(this.z * 7)) | 0);
+      const treeSeed = Math.round(this.x * 13 + this.z * 31);
       const baseCol = new THREE.Color(this.color);
       for (const [bx, by, bz, br] of TREE_BLOBS) {
-        const shade = baseCol.clone().offsetHSL(0, 0, (r() - 0.5) * 0.08);
+        const shadeOffset = (r() - 0.5) * 0.08;
+        const shade = baseCol.clone().offsetHSL(0, 0, shadeOffset);
         const hex = `#${shade.getHexString()}`;
-        const mat = getPooledStandard(treeMats, hex, { roughness: 0.85 });
+        const mat = getSeasonalTreeMat(hex, treeSeed, shadeOffset, by >= 0.55);
         const blob = new THREE.Mesh(PROP_GEO.treeBlob, mat);
         blob.position.set(bx * s, by * s, bz * s);
         blob.scale.setScalar(br * s);
@@ -383,7 +435,8 @@ export class ParkProp {
       this.conePivot.quaternion.setFromAxisAngle(this.axis, this.tilt);
     }
     if (this.canopy) {
-      this.canopy.rotation.z = Math.sin(t * 0.9 + this.swayPhase) * 0.025;
+      const swayAmp = 0.022 * (0.85 + envState.wind * 1.45);
+      this.canopy.rotation.z = Math.sin(t * (0.9 + envState.wind * 0.8) + this.swayPhase) * swayAmp;
     }
   }
 
