@@ -118,7 +118,7 @@ export function Plaza() {
     <group>
       <mesh geometry={geo} receiveShadow>
         {/* painted-concrete look: real normal/roughness relief, light warm base colour */}
-        <meshStandardMaterial normalMap={concrete.normalMap} roughnessMap={concrete.roughnessMap} color="#e6ded0" normalScale={[1.4, 1.4]} roughness={1} />
+        <meshStandardMaterial normalMap={concrete.normalMap} roughnessMap={concrete.roughnessMap} color="#d6ccbb" normalScale={[1.4, 1.4]} roughness={1} />
       </mesh>
       <mesh rotation-x={-Math.PI / 2} position={[cx, PLAZA_TOP + 0.002, cz]} receiveShadow>
         <planeGeometry args={[w - 0.1, d - 0.1]} />
