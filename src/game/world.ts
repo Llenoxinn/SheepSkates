@@ -3,7 +3,7 @@ import { BOARD_COLORS, BUSHES, isOnPlaza, PLAZA_TOP, POND, type Obstacle } from 
 import { clamp, damp, pick, rand } from './math';
 import { DEFAULT_PARK_PROPS, ParkProp, updateSeasonalProps, type RailSegment } from './props';
 import { Sfx } from './sfx';
-import { Sheep, type SheepWorld } from './sheep';
+import { Sheep, updateWoolFrost, type SheepWorld } from './sheep';
 import { useUI, type SheepState, type TrickType } from './store';
 import { stepEnvironment, envState } from './weather';
 
@@ -355,6 +355,7 @@ class World implements SheepWorld {
   update(dt: number, t: number) {
     stepEnvironment(dt);
     updateSeasonalProps();
+    updateWoolFrost();
     for (const s of this.flock) s.update(dt, t, this);
     for (let i = this.dying.length - 1; i >= 0; i--) {
       const s = this.dying[i]!; s.update(dt, t, this);

@@ -52,8 +52,46 @@ const GEO = {
   blob: new THREE.CircleGeometry(0.6, 32),
 };
 const woolN = baked('woolNormal', () => woolNormal(8));
+const woolUniforms = { uFrost: { value: 0 } };
+const woolWarmCol = new THREE.Color('#ffffff');
+const woolFrostCol = new THREE.Color('#eaf4ff');
+const woolWarmSheen = new THREE.Color('#fff4e0');
+const woolFrostSheen = new THREE.Color('#9ed6ff');
+
 const MAT = {
-  wool: new THREE.MeshPhysicalMaterial({ color: '#ffffff', vertexColors: true, roughness: 1, normalMap: woolN, normalScale: new THREE.Vector2(0.9, 0.9), sheen: 1, sheenRoughness: 0.5, sheenColor: new THREE.Color('#fff4e0') }),
+  wool: (() => {
+    const m = new THREE.MeshPhysicalMaterial({
+      color: '#ffffff',
+      vertexColors: true,
+      roughness: 1,
+      normalMap: woolN,
+      normalScale: new THREE.Vector2(0.9, 0.9),
+      sheen: 1,
+      sheenRoughness: 0.5,
+      sheenColor: new THREE.Color('#fff4e0'),
+      clearcoat: 0,
+      clearcoatRoughness: 0.28,
+    });
+    m.customProgramCacheKey = () => 'sheep-wool-frost-v1';
+    m.onBeforeCompile = shader => {
+      shader.uniforms.uFrost = woolUniforms.uFrost;
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vWoolWorldN;\nvarying vec3 vWoolPos;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWoolPos = position;\nvWoolWorldN = normalize(mat3(modelMatrix) * objectNormal);');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vWoolWorldN;\nvarying vec3 vWoolPos;\nuniform float uFrost;')
+        .replace(
+          '#include <color_fragment>',
+          `#include <color_fragment>
+          float topFrost = smoothstep(0.05, 0.72, vWoolWorldN.y);
+          float crystal = pow(max(0.0, sin(vWoolPos.x * 38.0 + vWoolPos.z * 31.0) * cos(vWoolPos.y * 42.0 - vWoolPos.x * 29.0)), 6.0);
+          float frostAmt = uFrost * (0.28 + 0.72 * topFrost);
+          vec3 frostTint = mix(vec3(0.80, 0.89, 0.97), vec3(0.90, 0.96, 1.0), crystal);
+          diffuseColor.rgb = mix(diffuseColor.rgb, frostTint, frostAmt * 0.65);`,
+        );
+    };
+    return m;
+  })(),
   face: new THREE.MeshStandardMaterial({ color: '#4a3b35', roughness: 0.62 }),
   eye: new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.2 }),
   pupil: new THREE.MeshStandardMaterial({ color: '#141010', roughness: 0.15 }),
@@ -68,6 +106,16 @@ const MAT = {
 const deckMats = BOARD_COLORS.map(c => new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.45, clearcoat: 0.6, clearcoatRoughness: 0.3 }));
 const hatMats = BOARD_COLORS.map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.95 }));
 const blobTex = baked('blob', () => radialTex('rgba(40,30,20,.9)', 'rgba(40,30,20,0)'));
+
+/** Updates shared sheep wool frost sheen and rime crystals per frame with zero allocations. */
+export function updateWoolFrost(): void {
+  const f = envState.frost;
+  woolUniforms.uFrost.value = f;
+  MAT.wool.color.copy(woolWarmCol).lerp(woolFrostCol, f);
+  MAT.wool.sheenColor.copy(woolWarmSheen).lerp(woolFrostSheen, f);
+  MAT.wool.sheenRoughness = 0.5 - 0.32 * f;
+  MAT.wool.clearcoat = f * 0.45;
+}
 
 const usedNames = new Set<string>();
 const nextName = () => {

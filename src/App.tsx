@@ -6,6 +6,7 @@ import { Island, Plaza } from './scene/Island';
 import { Props } from './scene/Props';
 import { Sky } from './scene/Sky';
 import { CameraRig, Effects, Lighting } from './scene/Stage';
+import { WeatherFX } from './scene/WeatherFX';
 import { Hud } from './ui/Hud';
 import { world } from './game/world';
 
@@ -40,6 +41,7 @@ export function App() {
           <Plaza />
           <Props />
           <Flock />
+          <WeatherFX />
           {FX && <Effects />}
         </Suspense>
         <CameraRig />
