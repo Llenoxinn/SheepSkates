@@ -4,6 +4,17 @@ import { Vector3 } from 'three';
 export const IW = 26;
 export const IH = 18;
 export const PLAZA = { x0: -4.5, x1: 8.5, z0: -4.2, z1: 4.8, radius: 1.6 } as const;
+
+/** Exact rounded-rectangle containment test for the concrete skate plaza. */
+export function isOnPlaza(x: number, z: number): boolean {
+  const { x0, x1, z0, z1, radius: r } = PLAZA;
+  if (x < x0 || x > x1 || z < z0 || z > z1) return false;
+  const cx = x < x0 + r ? x0 + r : x > x1 - r ? x1 - r : x;
+  const cz = z < z0 + r ? z0 + r : z > z1 - r ? z1 - r : z;
+  const dx = x - cx;
+  const dz = z - cz;
+  return dx * dx + dz * dz <= r * r;
+}
 export const POND = { x: -8.7, z: 3.3, rx: 2.5, rz: 1.75 } as const;
 export const RAIL = { a: new Vector3(-0.8, 0, -2.6), b: new Vector3(4.8, 0, -2.6), top: 0.5 } as const;
 export const SHEEP_SCALE = 1.25;

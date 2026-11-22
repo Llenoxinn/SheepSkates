@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { BOARD_COLORS, BOUNDS, GRAVITY, NAMES, OBSTACLES, RAIL, RAIL_Y, SHEEP_SCALE } from './config';
-import { clamp, damp, dampA, easeIO, easeInBack, easeOutBack, pick, rand, rng, wrapA } from './math';
+import { BOARD_COLORS, BOUNDS, GRAVITY, isOnPlaza, NAMES, OBSTACLES, RAIL, RAIL_Y, SHEEP_SCALE } from './config';
+import { clamp, damp, dampA, easeInBack, easeOutBack, pick, rand, rng, wrapA } from './math';
 import { Sfx } from './sfx';
 import type { SheepState, TrickType } from './store';
 import { baked, radialTex, woolNormal } from './textures';
@@ -32,29 +32,31 @@ const ellipsoid = (x: number, y: number, z: number, ws = 16, hs = 12) => { const
 
 const GEO = {
   wool: woolGeo(7, 72, 0.4, 0.28, 0.5, 0.11, 0.165, -0.6, 14),
-  tuft: woolGeo(3, 12, 0.1, 0.05, 0.09, 0.045, 0.065, -0.3, 10),
-  head: ellipsoid(0.145, 0.165, 0.2, 28, 20),
-  eye: new THREE.SphereGeometry(0.042, 16, 12), pupil: new THREE.SphereGeometry(0.024, 12, 8), glint: new THREE.SphereGeometry(0.009, 6, 4),
-  ear: (() => { const g = ellipsoid(0.095, 0.032, 0.055, 14, 10); g.translate(0.08, 0, 0); return g; })(),
-  cheek: ellipsoid(0.032, 0.019, 0.013, 10, 8),
+  tuft: woolGeo(3, 14, 0.13, 0.065, 0.115, 0.052, 0.075, -0.3, 10),
+  head: ellipsoid(0.195, 0.21, 0.235, 28, 20),
+  eye: new THREE.SphereGeometry(0.062, 16, 12), pupil: new THREE.SphereGeometry(0.036, 12, 8), glint: new THREE.SphereGeometry(0.015, 8, 6),
+  nose: ellipsoid(0.038, 0.026, 0.022, 12, 8),
+  ear: (() => { const g = ellipsoid(0.115, 0.038, 0.065, 14, 10); g.translate(0.095, 0, 0); return g; })(),
+  cheek: ellipsoid(0.048, 0.028, 0.018, 10, 8),
   leg: new THREE.CylinderGeometry(0.042, 0.036, 0.2, 12),
   tail: new THREE.IcosahedronGeometry(0.085, 3),
   deck: new RoundedBoxGeometry(0.42, 0.05, 1.08, 4, 0.022),
   grip: new RoundedBoxGeometry(0.38, 0.012, 1.0, 2, 0.005),
   truck: new RoundedBoxGeometry(0.3, 0.04, 0.08, 2, 0.012),
   wheel: (() => { const g = new THREE.CylinderGeometry(0.056, 0.056, 0.05, 20); g.rotateZ(Math.PI / 2); return g; })(),
-  hat: new THREE.SphereGeometry(0.125, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2),
-  pom: new THREE.IcosahedronGeometry(0.05, 3),
+  hat: new THREE.SphereGeometry(0.16, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+  pom: new THREE.IcosahedronGeometry(0.058, 3),
   hit: new THREE.BoxGeometry(0.8, 1.1, 1.3),
   blob: new THREE.CircleGeometry(0.6, 32),
 };
 const woolN = baked('woolNormal', () => woolNormal(8));
 const MAT = {
   wool: new THREE.MeshPhysicalMaterial({ color: '#ffffff', vertexColors: true, roughness: 1, normalMap: woolN, normalScale: new THREE.Vector2(0.9, 0.9), sheen: 1, sheenRoughness: 0.5, sheenColor: new THREE.Color('#fff4e0') }),
-  face: new THREE.MeshStandardMaterial({ color: '#3a2f2b', roughness: 0.65 }),
+  face: new THREE.MeshStandardMaterial({ color: '#4a3b35', roughness: 0.62 }),
   eye: new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.2 }),
   pupil: new THREE.MeshStandardMaterial({ color: '#141010', roughness: 0.15 }),
   glint: new THREE.MeshBasicMaterial({ color: '#ffffff' }),
+  nose: new THREE.MeshStandardMaterial({ color: '#d69595', roughness: 0.55 }),
   cheek: new THREE.MeshStandardMaterial({ color: '#ff9fb4', roughness: 0.6 }),
   grip: new THREE.MeshStandardMaterial({ color: '#3f3d48', roughness: 0.95 }),
   truck: new THREE.MeshStandardMaterial({ color: '#bcc1cc', roughness: 0.3, metalness: 0.8 }),
@@ -78,15 +80,18 @@ const nextName = () => {
 
 export interface SheepWorld {
   flock: readonly Sheep[];
+  readonly selected: Sheep | null;
   keys: Readonly<Record<string, boolean>>;
   cameraForward(out: THREE.Vector3): THREE.Vector3;
-  puff(p: THREE.Vector3, n: number, spread?: number, size?: number): void;
+  puff(p: THREE.Vector3, n: number, spread?: number, size?: number, tint?: string): void;
   spark(x: number, y: number, z: number, dx: number, dz: number): void;
+  speedLine(x: number, y: number, z: number, heading: number, speed: number): void;
   award(name: string, pts: number, x: number, y: number, z: number, big?: boolean, cls?: string): void;
   popText(x: number, y: number, z: number, text: string, cls?: string): void;
   bumpCones(s: Sheep): void;
   onStateChanged(s: Sheep): void;
   randomSpot(wide: boolean, out: THREE.Vector3): THREE.Vector3;
+  shake(amount: number): void;
 }
 
 type Grind = { phase: 'approach' | 'runup' | 'up' | 'slide' | 'out'; S: THREE.Vector3; E: THREE.Vector3; dir: THREE.Vector3; L: number; P: THREE.Vector3; ang: number; s: number; after: SheepState };
@@ -102,6 +107,7 @@ export type SheepOpts = { x?: number; z?: number; heading?: number; state?: Shee
 export class Sheep {
   readonly id = nextId++;
   readonly name: string; readonly color: number; readonly hat: boolean;
+  readonly voicePitch: number; readonly voiceVib: number; readonly voiceDur: number;
   readonly root = new THREE.Group(); readonly air = new THREE.Group();
   private lean = new THREE.Group(); private board = new THREE.Group(); private rider = new THREE.Group();
   private head = new THREE.Group(); private eyes = new THREE.Group(); private tail: THREE.Mesh;
@@ -113,7 +119,7 @@ export class Sheep {
   state: SheepState; after: SheepState = 'idle';
   heading: number; speed = 0; target = new THREE.Vector3(); hasTarget = false; private tTimer = 0;
   y = 0; vy = 0; inAir = false; onRail = false;
-  private airT = 0; private airDur = 1; private trick: AirTrick = null; private pending: { type: TrickType | 'grindpop'; t: number } | null = null;
+  private airT = 0; private airDur = 1; private trick: AirTrick = null; private caught = false; private pending: { type: TrickType | 'grindpop'; t: number } | null = null;
   private flip = 0; private spin = 0; private pitch = 0; private slideYaw = 0; private slideYawT = 0; private leanA = 0; private turnRate = 0;
   sqV = 0; private sq = 0; private sqT = 0;
   private headYaw = 0; private headYawT = 0; private headPitch = 0; private lookT = rand(0, 2); private grazeT = 0; private blinkT = rand(1, 4); private blinkA = 0;
@@ -125,6 +131,9 @@ export class Sheep {
     this.name = o.name ?? nextName(); usedNames.add(this.name);
     this.color = o.color ?? ((Math.random() * BOARD_COLORS.length) | 0);
     this.hat = o.hat ?? Math.random() < 0.35;
+    this.voicePitch = rand(0.82, 1.24);
+    this.voiceVib = rand(6.2, 9.2);
+    this.voiceDur = rand(0.42, 0.62);
     this.state = o.state ?? 'idle'; this.heading = o.heading ?? 0;
     this.root.position.set(o.x ?? 0, 0, o.z ?? 0);
     this.root.add(this.lean); this.lean.add(this.air); this.air.add(this.board, this.rider);
@@ -145,23 +154,24 @@ export class Sheep {
     const body = new THREE.Mesh(GEO.wool, MAT.wool); body.position.y = 0.44; this.rider.add(body);
     this.tail = new THREE.Mesh(GEO.tail, MAT.wool); this.tail.position.set(0, 0.5, -0.53); this.rider.add(this.tail);
 
-    this.head.rotation.order = 'YXZ'; this.head.position.set(0, 0.52, 0.36); this.rider.add(this.head);
-    const face = new THREE.Mesh(GEO.head, MAT.face); face.position.set(0, -0.01, 0.16); face.rotation.x = 0.25; this.head.add(face);
-    this.eyes.position.set(0, 0.04, 0.305); this.head.add(this.eyes);
+    this.head.rotation.order = 'YXZ'; this.head.position.set(0, 0.55, 0.39); this.rider.add(this.head);
+    const face = new THREE.Mesh(GEO.head, MAT.face); face.position.set(0, -0.01, 0.18); face.rotation.x = 0.22; this.head.add(face);
+    this.eyes.position.set(0, 0.058, 0.375); this.head.add(this.eyes);
+    const nose = new THREE.Mesh(GEO.nose, MAT.nose); nose.position.set(0, -0.045, 0.405); this.head.add(nose);
     for (const s of [-1, 1]) {
-      const e = new THREE.Group(); e.position.set(s * 0.072, 0, 0); this.eyes.add(e);
+      const e = new THREE.Group(); e.position.set(s * 0.092, 0, 0); this.eyes.add(e);
       e.add(new THREE.Mesh(GEO.eye, MAT.eye));
-      const p = new THREE.Mesh(GEO.pupil, MAT.pupil); p.position.set(s * 0.004, 0.002, 0.028); e.add(p);
-      const gl = new THREE.Mesh(GEO.glint, MAT.glint); gl.position.set(s * 0.004 + 0.01, 0.014, 0.048); e.add(gl);
-      const ck = new THREE.Mesh(GEO.cheek, MAT.cheek); ck.position.set(s * 0.1, -0.07, 0.29); ck.rotation.y = s * 0.5; this.head.add(ck);
-      const ep = new THREE.Group(); ep.position.set(s * 0.11, 0.07, 0.12);
+      const p = new THREE.Mesh(GEO.pupil, MAT.pupil); p.position.set(s * 0.005, 0.003, 0.038); e.add(p);
+      const gl = new THREE.Mesh(GEO.glint, MAT.glint); gl.position.set(s * 0.005 + 0.015, 0.02, 0.065); e.add(gl);
+      const ck = new THREE.Mesh(GEO.cheek, MAT.cheek); ck.position.set(s * 0.132, -0.052, 0.345); ck.rotation.y = s * 0.52; this.head.add(ck);
+      const ep = new THREE.Group(); ep.position.set(s * 0.145, 0.085, 0.14);
       const em = new THREE.Mesh(GEO.ear, MAT.face); if (s < 0) em.rotation.y = Math.PI; ep.add(em); this.head.add(ep); this.ears.push({ g: ep, s });
     }
     if (this.hat) {
       const hm = hatMats[(this.color + 3) % BOARD_COLORS.length]!;
-      const h = new THREE.Mesh(GEO.hat, hm); h.position.set(0, 0.1, 0.13); h.scale.set(1, 0.85, 1.05); h.rotation.x = -0.15; this.head.add(h);
-      const pm = new THREE.Mesh(GEO.pom, hm); pm.position.set(0, 0.22, 0.11); this.head.add(pm);
-    } else { const t = new THREE.Mesh(GEO.tuft, MAT.wool); t.position.set(0, 0.12, 0.13); this.head.add(t); }
+      const h = new THREE.Mesh(GEO.hat, hm); h.position.set(0, 0.135, 0.15); h.scale.set(1, 0.85, 1.05); h.rotation.x = -0.15; this.head.add(h);
+      const pm = new THREE.Mesh(GEO.pom, hm); pm.position.set(0, 0.285, 0.13); this.head.add(pm);
+    } else { const t = new THREE.Mesh(GEO.tuft, MAT.wool); t.position.set(0, 0.155, 0.15); this.head.add(t); }
 
     this.root.traverse(n => { if ((n as THREE.Mesh).isMesh) { n.castShadow = true; n.receiveShadow = true; } });
 
@@ -190,13 +200,20 @@ export class Sheep {
 
   private launch(type: TrickType | 'grindpop') {
     const vy = { ollie: 5.4, kickflip: 5.9, spin: 6.4, grindpop: 5.3 }[type];
-    this.vy = vy; this.inAir = true; this.airT = 0; this.airDur = 2 * vy / GRAVITY; this.trick = type;
+    this.vy = vy; this.inAir = true; this.airT = 0; this.airDur = (2 * vy / GRAVITY) * 1.14; this.trick = type; this.caught = false;
     this.sqT = 0; this.sqV += 7; Sfx.whoosh();
   }
-  private land(w: SheepWorld) {
+  private land(w: SheepWorld, impactSpeed = 5.5) {
     this.y = 0; this.vy = 0; this.inAir = false; this.flip = 0; this.spin = 0; this.pitch = 0;
     this.sqV -= Math.min(9, 4 + this.airT * 6);
-    w.puff(this.pos, 7, 1.6, 1); Sfx.land();
+    const onConcrete = isOnPlaza(this.pos.x, this.pos.z);
+    const impact = clamp(impactSpeed / 6.5, 0.55, 1.55);
+    w.puff(this.pos, Math.round(7 + impact * 5), 1.4 + impact * 0.55, 0.85 + impact * 0.35);
+    Sfx.land(onConcrete ? 'concrete' : 'grass', impact);
+    if (this.trick === 'drop' || this.trick === 'grindout' || (w.selected === this && impactSpeed > 5.4)) {
+      const amt = this.trick === 'drop' ? 0.13 : this.trick === 'grindout' ? 0.095 : clamp((impactSpeed - 4.8) * 0.038, 0.035, 0.1);
+      w.shake(amt);
+    }
     const t = this.trick; this.trick = null;
     const { x, z } = this.pos;
     if (t === 'ollie') w.award('Ollie', 50, x, 1.3, z);
@@ -204,7 +221,7 @@ export class Sheep {
     else if (t === 'spin') w.award('360', 200, x, 1.3, z);
     else if (t === 'grindout') { w.award('Boardslide', 300, x, 1.3, z, true); this.finishGrind(w); }
     else if (t === 'grindpop' && this.state === 'grind') this.finishGrind(w);
-    else if (t === 'drop') Sfx.baa(1.1);
+    else if (t === 'drop') Sfx.baa(this.voicePitch * 1.06, this.voiceVib, this.voiceDur);
   }
 
   /* ---------------- grind sequence ---------------- */
@@ -230,11 +247,12 @@ export class Sheep {
     const S = (goingB ? RAIL.a : RAIL.b).clone(), E = (goingB ? RAIL.b : RAIL.a).clone(), dir = E.clone().sub(S).normalize();
     this.grind = { phase: 'up', S, E, dir, L: S.distanceTo(E), P: S.clone(), ang: Math.atan2(dir.x, dir.z), s: (this.pos.x - S.x) * dir.x, after: 'ride' };
     this.state = 'grind'; w.onStateChanged(this);
-    this.landRail(); return true;
+    this.landRail(w); return true;
   }
-  private landRail() {
+  private landRail(w: SheepWorld) {
     const g = this.grind!; this.onRail = true; this.inAir = false; this.vy = 0; this.y = RAIL_Y; this.trick = null; this.flip = 0; this.spin = 0;
     g.phase = 'slide'; this.slideYawT = Math.PI / 2; this.sqV -= 5; this.speed = Math.max(this.speed, 2.6);
+    for (let i = 0; i < 10; i++) w.spark(this.pos.x, RAIL.top + 0.02, this.pos.z, g.dir.x, g.dir.z);
     Sfx.clank(); Sfx.startHiss();
   }
   /** Returns a seek target, or null when the grind drives movement itself. */
@@ -249,7 +267,7 @@ export class Sheep {
       this.speed = damp(this.speed, 2.9, 2, dt);
       p.x = g.S.x + g.dir.x * g.s; p.z = g.S.z + g.dir.z * g.s;
       this.heading = g.ang;
-      if (Math.random() < dt * 140) w.spark(p.x, RAIL.top + 0.02, p.z, g.dir.x, g.dir.z);
+      if (Math.random() < dt * 170) w.spark(p.x, RAIL.top + 0.02, p.z, g.dir.x, g.dir.z);
       if (g.s >= g.L - 0.05) {
         this.onRail = false; this.slideYawT = 0; Sfx.stopHiss();
         this.vy = 4.2; this.inAir = true; this.airT = 0; this.airDur = 0.5; this.trick = 'grindout'; g.phase = 'out'; this.sqV += 5;
@@ -339,19 +357,36 @@ export class Sheep {
     // vertical motion + tricks
     const yPrev = this.y;
     if (this.inAir) {
-      this.vy -= GRAVITY * dt; this.y += this.vy * dt; this.airT += dt;
+      const apex = this.trick !== 'drop' ? clamp(1 - Math.abs(this.vy) / 1.5, 0, 1) : 0;
+      const grav = GRAVITY * (1 - 0.52 * apex * apex);
+      this.vy -= grav * dt; this.y += this.vy * dt; this.airT += dt;
       const k = clamp(this.airT / this.airDur, 0, 1);
-      if (this.trick === 'kickflip') this.flip = easeIO(k) * Math.PI * 2;
-      if (this.trick === 'spin') this.spin = easeIO(k) * Math.PI * 2;
+      if (this.trick === 'kickflip') {
+        const fk = clamp(k / 0.74, 0, 1);
+        this.flip = (1 - (1 - fk) ** 3) * Math.PI * 2;
+        if (fk >= 1 && !this.caught) { this.caught = true; this.sqV -= 2.2; }
+      }
+      if (this.trick === 'spin') {
+        const sk = clamp(k / 0.82, 0, 1);
+        this.spin = (1 - (1 - sk) ** 3) * Math.PI * 2;
+      }
       this.pitch = -0.5 * Math.sin(clamp(this.airT / 0.36, 0, 1) * Math.PI);
       const g = this.grind, crossing = this.vy < 0 && this.y <= RAIL_Y && yPrev >= RAIL_Y - 0.06;
-      if (this.state === 'grind' && g && g.phase === 'up' && crossing && g.s > -0.45 && g.s < g.L - 0.4) this.landRail();
+      if (this.state === 'grind' && g && g.phase === 'up' && crossing && g.s > -0.45 && g.s < g.L - 0.4) this.landRail(w);
       else if (this.state === 'ride' && crossing && this.catchRail(w)) { /* now sliding */ }
-      else if (this.y <= 0 && this.vy < 0) this.land(w);
+      else if (this.y <= 0 && this.vy < 0) this.land(w, Math.abs(this.vy));
     } else if (this.onRail) this.y = RAIL_Y;
 
     if (!this.inAir) w.bumpCones(this);
     this.animate(dt, t, prevH);
+    if (!this.inAir && !this.onRail && Math.abs(this.turnRate) > 2.2 && this.speed > 2.5 && Math.random() < dt * 14) {
+      w.puff(this.pos, Math.random() < 0.5 ? 1 : 2, 0.75, 0.55);
+    }
+    if (!this.onRail && ((this.state === 'ride' && this.speed > 3.0) || this.speed > 3.2)) {
+      if (Math.random() < dt * ((this.speed - 2.8) * 26)) {
+        w.speedLine(this.pos.x, this.y, this.pos.z, this.heading, this.speed);
+      }
+    }
   }
 
   private ride(dt: number, w: SheepWorld) {

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { CONES, OBSTACLES, PLAZA_TOP } from './config';
+import { BOARD_COLORS, CONES, isOnPlaza, OBSTACLES, PLAZA_TOP } from './config';
 import { clamp, damp, pick, rand } from './math';
 import { Sfx } from './sfx';
 import { Sheep, type SheepWorld } from './sheep';
@@ -15,9 +15,15 @@ export const overlay: { sel: HTMLElement | null; tag: HTMLElement | null; bar: H
 
 type Cmd = { do: () => void; undo: () => void };
 type Cone = { pivot: THREE.Group; x: number; z: number; tilt: number; tv: number; axis: THREE.Vector3; cd: number };
-type Puff = { m: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>; v: THREE.Vector3; life: number; max: number; size: number };
+type Puff = { m: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>; v: THREE.Vector3; life: number; max: number; size: number; rotV: number };
 type Spark = { m: THREE.Mesh; v: THREE.Vector3; life: number; max: number };
+type SpeedLine = { m: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>; v: THREE.Vector3; life: number; max: number; len: number };
+type Confetti = { m: THREE.Mesh; v: THREE.Vector3; rx: number; ry: number; rz: number; life: number; max: number; phase: number };
 type Bubble = { el: HTMLElement; s: Sheep };
+
+const PLAZA_DUST = ['#f7f1e6', '#ebe2d3'] as const;
+const GRASS_DUST = ['#dde6c3', '#e8dfc6'] as const;
+const SPARK_COLORS = ['#fff5cc', '#ffd36b', '#ff9f43', '#ffbe55'] as const;
 
 // scratch
 const _a = new THREE.Vector3(), _b = new THREE.Vector3();
@@ -36,6 +42,8 @@ class World implements SheepWorld {
   private cones: Cone[] = [];
   private puffs: Puff[] = []; private puffI = 0;
   private sparks: Spark[] = []; private sparkI = 0;
+  private speedLines: SpeedLine[] = []; private speedLineI = 0;
+  private confettis: Confetti[] = []; private confettiI = 0;
   private hoverRing: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>;
   private selRing: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>;
   private markers: { m: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>; t: number }[] = [];
@@ -43,6 +51,7 @@ class World implements SheepWorld {
   private history: Cmd[] = []; private future: Cmd[] = [];
   private combo = 1; private comboT = 0; private score = 0;
   private barX = 0; private barY = 0; private barFresh = true;
+  private shakeAmp = 0; private shakeT = 0; readonly shakeOffset = new THREE.Vector3();
 
   constructor() {
     const ring = (inner: number, outer: number, color: string) => {
@@ -73,15 +82,27 @@ class World implements SheepWorld {
     }
   }
   private buildParticles() {
-    const pg = new THREE.IcosahedronGeometry(0.1, 2);
-    for (let i = 0; i < 80; i++) {
-      const m = new THREE.Mesh(pg, new THREE.MeshStandardMaterial({ color: '#fffaf0', roughness: 1, transparent: true, depthWrite: false }));
-      m.visible = false; this.group.add(m); this.puffs.push({ m, v: new THREE.Vector3(), life: 1, max: 1, size: 1 });
+    const pg = new THREE.IcosahedronGeometry(0.11, 2);
+    for (let i = 0; i < 110; i++) {
+      const m = new THREE.Mesh(pg, new THREE.MeshStandardMaterial({ color: '#f7f1e6', roughness: 1, transparent: true, depthWrite: false }));
+      m.visible = false; this.group.add(m); this.puffs.push({ m, v: new THREE.Vector3(), life: 1, max: 1, size: 1, rotV: 0 });
     }
-    const sg = new THREE.SphereGeometry(0.025, 6, 4);
-    for (let i = 0; i < 100; i++) {
-      const m = new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ color: pick(['#ffd36b', '#ffb347', '#fff1b8']), toneMapped: false }));
+    const sg = new THREE.BoxGeometry(0.022, 0.022, 0.19);
+    const sparkMats = SPARK_COLORS.map(color => new THREE.MeshBasicMaterial({ color, toneMapped: false }));
+    for (let i = 0; i < 140; i++) {
+      const m = new THREE.Mesh(sg, sparkMats[i % sparkMats.length]!);
       m.visible = false; this.group.add(m); this.sparks.push({ m, v: new THREE.Vector3(), life: 1, max: 0.4 });
+    }
+    const lg = new THREE.BoxGeometry(0.018, 0.018, 0.65);
+    for (let i = 0; i < 36; i++) {
+      const m = new THREE.Mesh(lg, new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, depthWrite: false }));
+      m.visible = false; this.group.add(m); this.speedLines.push({ m, v: new THREE.Vector3(), life: 1, max: 0.25, len: 1 });
+    }
+    const cg = new THREE.PlaneGeometry(0.11, 0.065);
+    const confettiMats = BOARD_COLORS.map(color => new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }));
+    for (let i = 0; i < 90; i++) {
+      const m = new THREE.Mesh(cg, confettiMats[i % confettiMats.length]!);
+      m.visible = false; this.group.add(m); this.confettis.push({ m, v: new THREE.Vector3(), rx: 0, ry: 0, rz: 0, life: 1, max: 1.5, phase: 0 });
     }
   }
   private seedFlock() {
@@ -108,18 +129,50 @@ class World implements SheepWorld {
     }
     return out.set(2, 0, 0.5);
   }
-  puff(p: THREE.Vector3, n: number, spread = 1.6, size = 1) {
+  puff(p: THREE.Vector3, n: number, spread = 1.6, size = 1, tint?: string) {
+    const palette = isOnPlaza(p.x, p.z) ? PLAZA_DUST : GRASS_DUST;
     for (let i = 0; i < n; i++) {
       const q = this.puffs[this.puffI++ % this.puffs.length]!, a = rand(0, 6.28);
+      q.m.material.color.set(tint ?? pick(palette));
       q.m.position.set(p.x + Math.cos(a) * 0.2, p.y + 0.06, p.z + Math.sin(a) * 0.2);
+      q.m.rotation.set(rand(0, 6.28), rand(0, 6.28), rand(0, 6.28));
       q.v.set(Math.cos(a) * spread * rand(0.5, 1), rand(0.3, 0.9), Math.sin(a) * spread * rand(0.5, 1));
-      q.life = 0; q.max = rand(0.45, 0.75); q.size = size * rand(0.7, 1.3); q.m.visible = true;
+      q.rotV = rand(-2.8, 2.8);
+      q.life = 0; q.max = rand(0.45, 0.78); q.size = size * rand(0.7, 1.3); q.m.visible = true;
     }
   }
   spark(x: number, y: number, z: number, dx: number, dz: number) {
     const s = this.sparks[this.sparkI++ % this.sparks.length]!;
-    s.m.position.set(x, y, z); s.v.set(-dx * rand(0.5, 2) + rand(-1, 1), rand(1, 2.6), -dz * rand(0.5, 2) + rand(-1, 1));
-    s.life = 0; s.max = rand(0.2, 0.4); s.m.visible = true;
+    s.m.position.set(x, y, z);
+    s.v.set(-dx * rand(0.8, 2.6) + rand(-1.1, 1.1), rand(1.1, 2.8), -dz * rand(0.8, 2.6) + rand(-1.1, 1.1));
+    _a.copy(s.m.position).add(s.v); s.m.lookAt(_a);
+    s.m.scale.set(1, 1, 1);
+    s.life = 0; s.max = rand(0.2, 0.42); s.m.visible = true;
+  }
+  speedLine(x: number, y: number, z: number, heading: number, speed: number) {
+    const l = this.speedLines[this.speedLineI++ % this.speedLines.length]!;
+    const fx = Math.sin(heading), fz = Math.cos(heading);
+    const rx = fz, rz = -fx;
+    const side = (Math.random() < 0.5 ? -1 : 1) * rand(0.42, 0.95);
+    const fwd = rand(-0.4, 0.45);
+    l.m.position.set(x + rx * side + fx * fwd, y + rand(0.28, 1.05), z + rz * side + fz * fwd);
+    l.m.rotation.set(0, heading, 0);
+    const drift = speed * rand(0.25, 0.45);
+    l.v.set(-fx * drift, 0, -fz * drift);
+    l.len = clamp(speed * 0.28, 0.75, 1.6);
+    l.life = 0; l.max = rand(0.18, 0.3); l.m.material.opacity = 0; l.m.visible = true;
+  }
+  confetti(x: number, y: number, z: number, count = 28) {
+    for (let i = 0; i < count; i++) {
+      const c = this.confettis[this.confettiI++ % this.confettis.length]!;
+      const a = rand(0, 6.28), r = rand(0.8, 3.0);
+      c.m.position.set(x + Math.cos(a) * 0.15, y, z + Math.sin(a) * 0.15);
+      c.v.set(Math.cos(a) * r, rand(3.2, 5.8), Math.sin(a) * r);
+      c.m.rotation.set(rand(0, 6.28), rand(0, 6.28), rand(0, 6.28));
+      c.rx = rand(-9, 9); c.ry = rand(-9, 9); c.rz = rand(-9, 9);
+      c.phase = rand(0, 6.28); c.life = 0; c.max = rand(1.2, 1.9);
+      c.m.scale.setScalar(rand(0.85, 1.25)); c.m.visible = true;
+    }
   }
   bumpCones(s: Sheep) {
     const p = s.pos;
@@ -134,6 +187,10 @@ class World implements SheepWorld {
     }
   }
   onStateChanged(s: Sheep) { if (s === this.selected) this.syncUI(); }
+  shake(amount: number) {
+    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    this.shakeAmp = Math.min(0.16, Math.max(this.shakeAmp, amount));
+  }
 
   /* ---------------- score + floating text ---------------- */
   private toScreen(x: number, y: number, z: number): [number, number, boolean] {
@@ -154,6 +211,7 @@ class World implements SheepWorld {
     useUI.setState({ score: this.score, combo: this.combo });
     this.popText(x, y, z, `${name}! +${total}${this.combo > 1 ? `  ×${this.combo}` : ''}`, cls || (big || this.combo > 2 ? 'big' : ''));
     if (this.combo > 2 || big) Sfx.ding();
+    if (this.combo >= 3 || big) this.confetti(x, y + 0.35, z, this.combo >= 4 ? 42 : 26);
   }
   say(s: Sheep, text: string) {
     if (!overlay.layer) return;
@@ -188,9 +246,9 @@ class World implements SheepWorld {
 
   /* ---------------- selection + commands ---------------- */
   select(s: Sheep) {
-    if (this.selected === s) { s.sqV += 6; Sfx.baa(1 + Math.random() * 0.2); this.say(s, pick(['baa!', 'baaa~', 'meh', 'rad!', 'hi :)', 'wheee'])); return; }
+    if (this.selected === s) { s.sqV += 6; Sfx.baa(s.voicePitch * rand(1.02, 1.14), s.voiceVib, s.voiceDur); this.say(s, pick(['baa!', 'baaa~', 'meh', 'rad!', 'hi :)', 'wheee'])); return; }
     this.selected = s; this.barFresh = true;
-    s.sqV += 7; Sfx.pop(); Sfx.baa(); this.say(s, pick(['baa!', 'baaa?', 'ready!', 'yo!']));
+    s.sqV += 7; Sfx.pop(); Sfx.baa(s.voicePitch, s.voiceVib, s.voiceDur); this.say(s, pick(['baa!', 'baaa?', 'ready!', 'yo!']));
     overlay.sel?.classList.remove('on'); void overlay.sel?.offsetWidth; overlay.sel?.classList.add('on');
     this.syncUI();
   }
@@ -266,19 +324,79 @@ class World implements SheepWorld {
       c.cd -= dt; c.tv += (-c.tilt * 55 - c.tv * 4.5) * dt; c.tilt = clamp(c.tilt + c.tv * dt, -0.5, 1.35);
       c.pivot.quaternion.setFromAxisAngle(c.axis, c.tilt);
     }
+    const puffDrag = Math.exp(-3.2 * dt);
     for (const q of this.puffs) if (q.m.visible) {
       q.life += dt; const k = q.life / q.max; if (k >= 1) { q.m.visible = false; continue; }
-      q.v.multiplyScalar(Math.exp(-3.5 * dt)); q.m.position.addScaledVector(q.v, dt);
-      q.m.scale.setScalar(q.size * (0.7 + k * 2)); q.m.material.opacity = 0.9 * (1 - k) ** 1.6;
+      q.v.x *= puffDrag; q.v.z *= puffDrag;
+      q.v.y = q.v.y * puffDrag + 0.35 * dt;
+      q.m.position.addScaledVector(q.v, dt);
+      q.m.rotation.y += q.rotV * dt;
+      q.m.rotation.x += q.rotV * 0.5 * dt;
+      const easeOut = 1 - (1 - k) * (1 - k);
+      q.m.scale.setScalar(q.size * (0.55 + easeOut * 1.9));
+      q.m.material.opacity = 0.88 * (1 - k) ** 1.6;
     }
     for (const s of this.sparks) if (s.m.visible) {
       s.life += dt; const k = s.life / s.max; if (k >= 1) { s.m.visible = false; continue; }
-      s.v.y -= 12 * dt; s.m.position.addScaledVector(s.v, dt); s.m.scale.setScalar(1 - k);
+      s.v.y -= 12 * dt; s.m.position.addScaledVector(s.v, dt);
+      _a.copy(s.m.position).add(s.v); s.m.lookAt(_a);
+      const sp = Math.min(2.2, s.v.length() * 0.45);
+      s.m.scale.set(1 - k, 1 - k, (1 - k) * Math.max(0.5, sp));
+    }
+    for (const l of this.speedLines) if (l.m.visible) {
+      l.life += dt; const k = l.life / l.max; if (k >= 1) { l.m.visible = false; continue; }
+      l.m.position.addScaledVector(l.v, dt);
+      const fade = Math.sin(k * Math.PI);
+      l.m.scale.set(1, 1, l.len * (0.65 + 0.55 * fade));
+      l.m.material.opacity = fade * 0.52;
+    }
+    const confDrag = Math.exp(-2.2 * dt);
+    for (const c of this.confettis) if (c.m.visible) {
+      c.life += dt; const k = c.life / c.max; if (k >= 1) { c.m.visible = false; continue; }
+      c.v.x *= confDrag; c.v.z *= confDrag;
+      c.v.y = c.v.y * confDrag - 5.5 * dt;
+      c.m.position.x += c.v.x * dt + Math.sin(c.phase + c.life * 8) * 0.9 * dt;
+      c.m.position.y += c.v.y * dt;
+      c.m.position.z += c.v.z * dt + Math.cos(c.phase + c.life * 7) * 0.5 * dt;
+      c.m.rotation.x += c.rx * dt; c.m.rotation.y += c.ry * dt; c.m.rotation.z += c.rz * dt;
+      const sc = k > 0.75 ? Math.max(0.001, (1 - k) / 0.25) : 1;
+      c.m.scale.setScalar(sc);
+      if (c.m.position.y < PLAZA_TOP) { c.m.position.y = PLAZA_TOP; c.v.y = 0; c.v.x *= 0.7; c.v.z *= 0.7; }
     }
     this.comboT -= dt;
     if (this.comboT <= 0 && this.combo > 1) { this.combo = 1; useUI.setState({ combo: 1 }); }
 
+    if (this.shakeAmp > 0.001) {
+      this.shakeT += dt * 44;
+      this.shakeAmp *= Math.exp(-15 * dt);
+      this.shakeOffset.set(
+        Math.sin(this.shakeT * 1.13) * this.shakeAmp,
+        Math.cos(this.shakeT * 1.71) * this.shakeAmp * 0.75,
+        Math.sin(this.shakeT * 0.89) * this.shakeAmp * 0.5,
+      );
+    } else {
+      this.shakeAmp = 0;
+      this.shakeOffset.set(0, 0, 0);
+    }
+
     const h = this.hovered, sel = this.selected;
+    if (sel && !sel.dying) {
+      const grounded = !sel.inAir && !sel.onRail;
+      Sfx.setRoll(Math.abs(sel.speed), isOnPlaza(sel.pos.x, sel.pos.z), grounded);
+    } else {
+      let fastest: Sheep | null = null;
+      let bestSp = 0;
+      for (const s of this.flock) {
+        if (s.dying || s.inAir || s.onRail) continue;
+        const sp = Math.abs(s.speed);
+        if (sp > bestSp) { bestSp = sp; fastest = s; }
+      }
+      if (fastest && bestSp > 0.15) {
+        Sfx.setRoll(bestSp * 0.55, isOnPlaza(fastest.pos.x, fastest.pos.z), true);
+      } else {
+        Sfx.setRoll(0, true, false);
+      }
+    }
     if (h && h !== sel && !h.dying) {
       h.hoverK = damp(h.hoverK, 1, 14, dt);
       this.hoverRing.position.set(h.pos.x, PLAZA_TOP + 0.01, h.pos.z); this.hoverRing.material.opacity = 0.85 * h.hoverK; this.hoverRing.scale.setScalar(0.95 + Math.sin(t * 6) * 0.04);

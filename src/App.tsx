@@ -4,6 +4,7 @@ import { useProgress } from '@react-three/drei';
 import { Flock } from './scene/Flock';
 import { Island, Plaza } from './scene/Island';
 import { Props } from './scene/Props';
+import { Sky } from './scene/Sky';
 import { CameraRig, Effects, Lighting } from './scene/Stage';
 import { Hud } from './ui/Hud';
 import { world } from './game/world';
@@ -31,7 +32,8 @@ export function App() {
         gl={{ antialias: false, alpha: false, powerPreference: 'high-performance' }}
         camera={{ fov: 26, near: 0.1, far: 300 }}
       >
-        <color attach="background" args={['#f3ecdf']} />
+        <color attach="background" args={['#c8dff0']} />
+        <Sky />
         <Suspense fallback={null}>
           <Lighting />
           <Island />
