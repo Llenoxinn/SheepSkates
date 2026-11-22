@@ -37,6 +37,14 @@ export function CameraRig() {
   const size = useThree(s => s.size);
   const ctrlRef = useRef<ComponentRef<typeof OrbitControls>>(null);
   useEffect(() => {
+    world.setOrbitEnabled = (on: boolean) => {
+      if (ctrlRef.current) ctrlRef.current.enabled = on;
+    };
+    return () => {
+      world.setOrbitEnabled = null;
+    };
+  }, []);
+  useEffect(() => {
     _prevShake.set(0, 0, 0);
     const d = 42 * Math.max(1, 1.55 / (size.width / size.height));
     camera.position.copy(TARGET).addScaledVector(CAM_DIR, d);

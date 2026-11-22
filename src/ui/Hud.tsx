@@ -29,6 +29,7 @@ const TRICKS: { id: TrickType; label: string; tip: string }[] = [
 
 function Toolbar() {
   const selected = useUI(s => s.selected);
+  const sheepSel = selected?.kind === 'sheep' ? selected : null;
   const canUndo = useUI(s => s.canUndo), canRedo = useUI(s => s.canRedo);
   const fired = useUI(s => s.firedTrick);
   const segRef = useRef<HTMLDivElement>(null);
@@ -36,9 +37,9 @@ function Toolbar() {
 
   // slide the pill under the active state button
   useLayoutEffect(() => {
-    const btn = segRef.current?.querySelector<HTMLButtonElement>(`[data-state="${selected?.state}"]`);
+    const btn = segRef.current?.querySelector<HTMLButtonElement>(`[data-state="${sheepSel?.state}"]`);
     setPill(btn ? { x: btn.offsetLeft, w: btn.offsetWidth, on: true } : p => ({ ...p, on: false }));
-  }, [selected?.state, selected?.id]);
+  }, [sheepSel?.state, sheepSel?.id]);
 
   // replay the "fire" flash on the trick button that was triggered (keyboard or click)
   useEffect(() => {
@@ -58,10 +59,10 @@ function Toolbar() {
       <div className="seg" ref={segRef}>
         <span className="pill" style={{ width: pill.w, transform: `translateX(${pill.x}px)`, opacity: pill.on ? 1 : 0 }} />
         {STATES.map(s => (
-          <button key={s.id} data-state={s.id} data-tip={s.tip} className={selected?.state === s.id ? 'active' : ''} onClick={() => world.setState(s.id)}>{s.label}</button>
+          <button key={s.id} data-state={s.id} data-tip={s.tip} className={sheepSel?.state === s.id ? 'active' : ''} onClick={() => world.setState(s.id)}>{s.label}</button>
         ))}
       </div>
-      {selected?.state === 'ride' && <span className="riding"><i />Riding</span>}
+      {sheepSel?.state === 'ride' && <span className="riding"><i />Riding</span>}
       <span className="sep" />
       {TRICKS.map(t => <button key={t.id} data-trick={t.id} data-tip={t.tip} onClick={() => world.trick(t.id)}>{t.label}</button>)}
       <span className="sep" />
