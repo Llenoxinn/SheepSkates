@@ -7,6 +7,7 @@ import type { RailSegment } from './props';
 import { Sfx } from './sfx';
 import type { SheepState, TrickType } from './store';
 import { baked, radialTex, woolNormal } from './textures';
+import { envState } from './weather';
 
 /* ------------------------------------------------------------------ */
 /* Shared geometry + materials (built once, reused by every sheep)      */
@@ -133,7 +134,7 @@ export class Sheep {
   readonly hit: THREE.Mesh;
 
   state: SheepState; after: SheepState = 'idle';
-  heading: number; speed = 0; target = new THREE.Vector3(); hasTarget = false; private tTimer = 0;
+  heading: number; private velHeading: number; speed = 0; target = new THREE.Vector3(); hasTarget = false; private tTimer = 0;
   y = 0; vy = 0; inAir = false; onRail = false;
   private airT = 0; private airDur = 1; private trick: AirTrick = null; private caught = false; private pending: { type: TrickType | 'grindpop'; t: number } | null = null;
   private flip = 0; private spin = 0; private pitch = 0; private slideYaw = 0; private slideYawT = 0; private leanA = 0; private turnRate = 0;
@@ -150,7 +151,7 @@ export class Sheep {
     this.voicePitch = rand(0.82, 1.24);
     this.voiceVib = rand(6.2, 9.2);
     this.voiceDur = rand(0.42, 0.62);
-    this.state = o.state ?? 'idle'; this.heading = o.heading ?? 0;
+    this.state = o.state ?? 'idle'; this.heading = o.heading ?? 0; this.velHeading = this.heading;
     this.root.position.set(o.x ?? 0, 0, o.z ?? 0);
     this.root.add(this.lean); this.lean.add(this.air); this.air.add(this.board, this.rider);
     this.air.scale.setScalar(SHEEP_SCALE);
@@ -227,7 +228,14 @@ export class Sheep {
     this.sqV -= Math.min(9, 4 + this.airT * 6);
     const onConcrete = isOnPlaza(this.pos.x, this.pos.z);
     const impact = clamp(impactSpeed / 6.5, 0.55, 1.55);
-    w.puff(this.pos, Math.round(7 + impact * 5), 1.4 + impact * 0.55, 0.85 + impact * 0.35);
+    const landTint = onConcrete && envState.wetness > 0.35
+      ? '#d8ecff'
+      : onConcrete && envState.ice > 0.4
+        ? '#edf6ff'
+        : envState.snow > 0.35 || envState.winter > 0.55
+          ? '#edf4fb'
+          : undefined;
+    w.puff(this.pos, Math.round(7 + impact * 5), 1.4 + impact * 0.55, 0.85 + impact * 0.35, landTint);
     Sfx.land(onConcrete ? 'concrete' : 'grass', impact);
     if (this.trick === 'drop' || this.trick === 'grindout' || (w.selected === this && impactSpeed > 5.4)) {
       const amt = this.trick === 'drop' ? 0.13 : this.trick === 'grindout' ? 0.095 : clamp((impactSpeed - 4.8) * 0.038, 0.035, 0.1);
@@ -377,20 +385,25 @@ export class Sheep {
     if (this.popT < 1) { this.popT = Math.min(1, this.popT + dt / 0.5); this.root.scale.setScalar(Math.max(0.001, easeOutBack(this.popT))); }
 
     const p = this.pos, prevH = this.heading;
+    const grounded = !this.inAir && !this.onRail;
+    const onConcrete = isOnPlaza(p.x, p.z);
+    const ice = grounded && onConcrete ? envState.ice : 0;
+    const rain = grounded ? envState.rain : 0;
     if (this.pending) { this.pending.t += dt; if (this.pending.t > 0.09) { this.launch(this.pending.type); this.pending = null; } }
 
     let want: THREE.Vector3 | null = null, max = 0;
+    const weatherPace = (1 - 0.22 * rain) * (1 + 0.08 * ice);
     switch (this.state) {
-      case 'idle': this.speed = damp(this.speed, 0, 3.5, dt); break;
+      case 'idle': this.speed = damp(this.speed, 0, 3.5 * (1 - 0.84 * ice) + 0.9 * rain, dt); break;
       case 'cruise':
         this.tTimer -= dt;
         if (!this.hasTarget || this.tTimer <= 0 || Math.hypot(p.x - this.target.x, p.z - this.target.z) < 1) { w.randomSpot(this.wide, this.target); this.hasTarget = true; this.tTimer = rand(4, 8); }
-        want = this.target; max = this.cruiseSpeed; break;
+        want = this.target; max = this.cruiseSpeed * weatherPace; break;
       case 'goto':
-        want = this.target; max = 3;
+        want = this.target; max = 3 * weatherPace;
         if (Math.hypot(p.x - want.x, p.z - want.z) < 0.35) { this.state = this.after; this.hasTarget = false; w.onStateChanged(this); }
         break;
-      case 'ride': this.ride(dt, w); break;
+      case 'ride': this.ride(dt, w, ice, rain); break;
       case 'grind': { const r = this.grindStep(dt, w); if (r) { want = r; max = 2.8; } break; }
     }
 
@@ -400,10 +413,22 @@ export class Sheep {
       const dh = wrapA(Math.atan2(vx, vz) - this.heading);
       this.heading += clamp(dh, -3.4 * dt, 3.4 * dt);
       const arrive = this.state === 'goto' ? clamp(d / 1.6, 0.25, 1) : 1;
-      this.speed = damp(this.speed, max * arrive * (1 - Math.min(0.6, Math.abs(dh) / Math.PI)), 2.2, dt);
+      this.speed = damp(this.speed, max * arrive * (1 - Math.min(0.6, Math.abs(dh) / Math.PI)), 2.2 * (1 - 0.45 * ice), dt);
     }
-    if (this.onRail) this.grind!.s += this.speed * dt;
-    else { p.x += Math.sin(this.heading) * this.speed * dt; p.z += Math.cos(this.heading) * this.speed * dt; }
+    if (this.onRail) {
+      this.grind!.s += this.speed * dt;
+      this.velHeading = this.heading;
+    } else {
+      if (ice > 0.02 && this.state !== 'grind') {
+        this.velHeading = dampA(this.velHeading, this.heading, 18 - 15.6 * ice, dt);
+      } else if (grounded) {
+        this.velHeading = dampA(this.velHeading, this.heading, 24, dt);
+      } else {
+        this.velHeading = this.heading;
+      }
+      p.x += Math.sin(this.velHeading) * this.speed * dt;
+      p.z += Math.cos(this.velHeading) * this.speed * dt;
+    }
 
     // collisions
     if (!this.onRail) {
@@ -411,10 +436,10 @@ export class Sheep {
         if (o.h >= 0 && this.y > o.h) continue;
         if (o.tag === 'rail' && this.state === 'grind') continue;
         const dx = p.x - o.x, dz = p.z - o.z, d = Math.hypot(dx, dz), R = o.r + 0.38;
-        if (d < R && d > 1e-4) { p.x = o.x + dx / d * R; p.z = o.z + dz / d * R; if (this.state === 'ride') this.speed *= 0.85; }
+        if (d < R && d > 1e-4) { p.x = o.x + dx / d * R; p.z = o.z + dz / d * R; if (this.state === 'ride') this.speed *= 0.85; this.velHeading = this.heading; }
       }
-      if (Math.abs(p.x) > BOUNDS.x) { p.x = Math.sign(p.x) * BOUNDS.x; this.speed *= 0.5; }
-      if (Math.abs(p.z) > BOUNDS.z) { p.z = Math.sign(p.z) * BOUNDS.z; this.speed *= 0.5; }
+      if (Math.abs(p.x) > BOUNDS.x) { p.x = Math.sign(p.x) * BOUNDS.x; this.speed *= 0.5; this.velHeading = this.heading; }
+      if (Math.abs(p.z) > BOUNDS.z) { p.z = Math.sign(p.z) * BOUNDS.z; this.speed *= 0.5; this.velHeading = this.heading; }
     }
 
     // vertical motion + tricks
@@ -443,8 +468,14 @@ export class Sheep {
 
     if (!this.inAir) w.bumpCones(this);
     this.animate(dt, t, prevH);
-    if (!this.inAir && !this.onRail && Math.abs(this.turnRate) > 2.2 && this.speed > 2.5 && Math.random() < dt * 14) {
-      w.puff(this.pos, Math.random() < 0.5 ? 1 : 2, 0.75, 0.55);
+    const sliding = Math.abs(wrapA(this.heading - this.velHeading)) > 0.16 && ice > 0.3;
+    if (!this.inAir && !this.onRail && (Math.abs(this.turnRate) > 2.2 || sliding) && this.speed > 2.1 && Math.random() < dt * (sliding ? 24 : 14)) {
+      const sprayTint = onConcrete && envState.wetness > 0.35
+        ? '#d6ebff'
+        : ice > 0.35
+          ? '#eaf5ff'
+          : undefined;
+      w.puff(this.pos, Math.random() < 0.5 ? 1 : 2, 0.75, 0.55, sprayTint);
     }
     if (!this.onRail && ((this.state === 'ride' && this.speed > 3.0) || this.speed > 3.2)) {
       if (Math.random() < dt * ((this.speed - 2.8) * 26)) {
@@ -453,15 +484,21 @@ export class Sheep {
     }
   }
 
-  private ride(dt: number, w: SheepWorld) {
+  private ride(dt: number, w: SheepWorld, ice: number, rain: number) {
     const k = w.keys, f = (k.w ? 1 : 0) - (k.s ? 1 : 0), r = (k.d ? 1 : 0) - (k.a ? 1 : 0);
     if (f || r) { // camera-relative steering
       const fw = w.cameraForward(_v);
       const dx = fw.x * f - fw.z * r, dz = fw.z * f + fw.x * r;
       const dh = wrapA(Math.atan2(dx, dz) - this.heading);
-      this.heading += clamp(dh, -5 * dt, 5 * dt);
-      this.speed = damp(this.speed, 4.6 * (1 - Math.min(0.5, Math.abs(dh) / Math.PI)), 2.4, dt);
-    } else this.speed = damp(this.speed, 0, 0.9, dt);
+      const turnCap = 5 * (1 - 0.24 * ice);
+      this.heading += clamp(dh, -turnCap * dt, turnCap * dt);
+      const maxRide = 4.6 * (1 - 0.36 * rain) * (1 + 0.1 * ice);
+      const accel = 2.4 * (1 - 0.35 * rain) * (1 - 0.35 * ice);
+      this.speed = damp(this.speed, maxRide * (1 - Math.min(0.5, Math.abs(dh) / Math.PI)), accel, dt);
+    } else {
+      const coastDamp = 0.9 * (1 - 0.84 * ice) + 0.95 * rain;
+      this.speed = damp(this.speed, 0, coastDamp, dt);
+    }
   }
 
   /** Secondary motion: lean, look-around, grazing, blinks, ear flaps, squash & stretch. */
