@@ -7,6 +7,7 @@ import { Props } from './scene/Props';
 import { Sky } from './scene/Sky';
 import { CameraRig, Effects, Lighting } from './scene/Stage';
 import { Hud } from './ui/Hud';
+import { decodeParkFromParam, loadParkFromStorage } from './game/parkSerializer';
 import { world } from './game/world';
 
 const params = new URLSearchParams(location.search);
@@ -19,6 +20,19 @@ function Loader() {
 }
 
 export function App() {
+  useEffect(() => {
+    const sharedParam = params.get('park');
+    const shared = sharedParam ? decodeParkFromParam(sharedParam) : null;
+    if (shared) {
+      world.loadPark(shared, false, 'Loaded shared park!');
+    } else if (sharedParam) {
+      world.showToast('Invalid share link');
+    } else {
+      const saved = loadParkFromStorage();
+      if (saved) world.loadPark(saved, false, null);
+    }
+  }, []);
+
   useEffect(() => {
     if (!params.has('demo')) return;
     const t = setTimeout(() => { const s = world.flock[0]; if (s) world.select(s); }, 1500);

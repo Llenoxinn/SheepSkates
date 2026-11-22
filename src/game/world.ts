@@ -1,6 +1,10 @@
 import * as THREE from 'three';
 import { BOARD_COLORS, BOUNDS, BUSHES, isOnPlaza, PLAZA_TOP, POND, type Obstacle } from './config';
 import { clamp, damp, pick, rand, wrapA } from './math';
+import {
+  buildShareUrl, clearParkStorage, downloadParkJson, readParkJsonFile, saveParkToStorage,
+  type ParkData, type SerializedSheep,
+} from './parkSerializer';
 import { DEFAULT_PARK_PROPS, ParkProp, type PropDef, type PropKind, type RailSegment } from './props';
 import { Sfx } from './sfx';
 import { Sheep, type SheepWorld } from './sheep';
@@ -371,8 +375,12 @@ class World implements SheepWorld {
         Sfx.pop();
         this.puff(_b.set(p.x, 0.12, p.z), 8, 1.4, 1.1);
         if (selectIt) this.selectProp(p);
+        saveParkToStorage(this.serializePark());
       },
-      undo: () => this.detachProp(p),
+      undo: () => {
+        this.detachProp(p);
+        saveParkToStorage(this.serializePark());
+      },
     });
     return p;
   }
@@ -387,6 +395,7 @@ class World implements SheepWorld {
         this.rebuildRegistry();
         Sfx.tick();
         this.syncUI();
+        saveParkToStorage(this.serializePark());
       },
       undo: () => {
         p.setTransform(p.x, p.z, prevRot);
@@ -395,6 +404,7 @@ class World implements SheepWorld {
         this.rebuildRegistry();
         Sfx.tick();
         this.syncUI();
+        saveParkToStorage(this.serializePark());
       },
     });
   }
@@ -417,6 +427,7 @@ class World implements SheepWorld {
         if (p.kind === 'rail') this.cancelGrindsOnRail(p.id);
         this.rebuildRegistry();
         this.syncUI();
+        saveParkToStorage(this.serializePark());
       },
       undo: () => {
         p.setTransform(fromX, fromZ, p.rotY);
@@ -424,6 +435,7 @@ class World implements SheepWorld {
         if (p.kind === 'rail') this.cancelGrindsOnRail(p.id);
         this.rebuildRegistry();
         this.syncUI();
+        saveParkToStorage(this.serializePark());
       },
     });
     Sfx.tick();
@@ -492,8 +504,12 @@ class World implements SheepWorld {
           Sfx.pop();
           this.puff(_b.set(c.x, 0.12, c.z), 6, 1.2, 1);
           this.selectProp(c);
+          saveParkToStorage(this.serializePark());
         },
-        undo: () => this.detachProp(c),
+        undo: () => {
+          this.detachProp(c);
+          saveParkToStorage(this.serializePark());
+        },
       });
       return;
     }
@@ -509,8 +525,15 @@ class World implements SheepWorld {
     if (this.selectedProp) {
       const p = this.selectedProp;
       this.commit({
-        do: () => this.detachProp(p),
-        undo: () => { this.attachProp(p, true); Sfx.pop(); },
+        do: () => {
+          this.detachProp(p);
+          saveParkToStorage(this.serializePark());
+        },
+        undo: () => {
+          this.attachProp(p, true);
+          Sfx.pop();
+          saveParkToStorage(this.serializePark());
+        },
       });
       return;
     }
@@ -524,6 +547,119 @@ class World implements SheepWorld {
         Sfx.pop();
       },
     });
+  }
+
+  /* ---------------- park save / load / share ---------------- */
+  serializePark(): ParkData {
+    const props = this.props.map(p => p.toDef());
+    const flock: SerializedSheep[] = this.flock.map(s => ({
+      x: Math.round(s.pos.x * 100) / 100,
+      z: Math.round(s.pos.z * 100) / 100,
+      heading: Math.round(wrapA(s.heading) * 100) / 100,
+      state: s.state === 'goto' || s.state === 'ride' ? 'idle' : s.state,
+      color: s.color,
+      hat: s.hat,
+      name: s.name,
+    }));
+    return { version: 1, props, flock };
+  }
+  private applyParkSnapshot(data: ParkData) {
+    this.deselect();
+    for (const p of this.props) this.group.remove(p.root);
+    for (const p of this.dyingProps) this.group.remove(p.root);
+    this.props.length = 0;
+    this.dyingProps.length = 0;
+    this.propHitTargets.length = 0;
+
+    for (const def of data.props) {
+      const p = new ParkProp(def);
+      p.spawnPop();
+      this.props.push(p);
+      this.group.add(p.root);
+      this.propHitTargets.push(p.hit);
+    }
+    this.rebuildRegistry();
+
+    if (data.flock && data.flock.length > 0) {
+      for (const s of this.flock) {
+        if (s.state === 'grind') s.exitGrind();
+        this.group.remove(s.root);
+      }
+      for (const s of this.dying) this.group.remove(s.root);
+      this.flock.length = 0;
+      this.dying.length = 0;
+      this.hitTargets.length = 0;
+      for (const sd of data.flock) {
+        const s = new Sheep({ x: sd.x, z: sd.z, heading: sd.heading, state: 'idle', color: sd.color, hat: sd.hat, name: sd.name });
+        this.attach(s);
+        s.setState(sd.state ?? 'idle', this);
+      }
+    } else {
+      for (const s of this.flock) {
+        if (s.state === 'grind') s.setState('grind', this);
+      }
+    }
+    this.syncUI();
+  }
+  loadPark(data: ParkData, recordUndo = true, toastMsg: string | null = 'Park loaded!') {
+    const before = this.serializePark();
+    if (recordUndo) {
+      this.commit({
+        do: () => {
+          this.applyParkSnapshot(data);
+          saveParkToStorage(data);
+        },
+        undo: () => {
+          this.applyParkSnapshot(before);
+          saveParkToStorage(before);
+        },
+      });
+    } else {
+      this.applyParkSnapshot(data);
+    }
+    Sfx.pop();
+    if (toastMsg) this.showToast(toastMsg);
+  }
+  resetPark() {
+    this.loadPark({ version: 1, props: DEFAULT_PARK_PROPS }, true, 'Default park restored');
+    clearParkStorage();
+    if (typeof window !== 'undefined' && location.search.includes('park=')) {
+      const u = new URL(location.href);
+      u.searchParams.delete('park');
+      history.replaceState(null, '', u.toString());
+    }
+  }
+  exportPark() {
+    const data = this.serializePark();
+    saveParkToStorage(data);
+    downloadParkJson(data);
+    Sfx.pop();
+    this.showToast('Saved park JSON');
+  }
+  async importPark(file: File) {
+    try {
+      const data = await readParkJsonFile(file);
+      this.loadPark(data, true, 'Park loaded!');
+    } catch {
+      this.showToast('Invalid park file');
+    }
+  }
+  async shareParkLink() {
+    const data = this.serializePark();
+    saveParkToStorage(data);
+    const url = buildShareUrl(data);
+    try {
+      history.replaceState(null, '', url);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        this.showToast('Share link copied!');
+      } else {
+        this.showToast('Share link added to URL bar');
+      }
+      Sfx.ding();
+    } catch {
+      this.showToast('Share link added to URL bar');
+    }
   }
   spawn() {
     const p = this.randomSpot(true, new THREE.Vector3());
@@ -622,7 +758,9 @@ class World implements SheepWorld {
     }
 
     const h = this.hovered, sel = this.selected, hp = this.hoveredProp, selP = this.selectedProp;
-    if (sel && !sel.dying) {
+    if (!this.livePlay) {
+      Sfx.setRoll(0, true, false);
+    } else if (sel && !sel.dying) {
       const grounded = !sel.inAir && !sel.onRail;
       Sfx.setRoll(Math.abs(sel.speed), isOnPlaza(sel.pos.x, sel.pos.z), grounded);
     } else {
