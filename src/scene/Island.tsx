@@ -68,7 +68,10 @@ export function Island() {
           float notPond = smoothstep(0.90, 1.15, pondDist);
           float greenMask = smoothstep(-0.04, 0.08, diffuseColor.g - diffuseColor.r * 0.94)
                           * smoothstep(0.02, 0.14, diffuseColor.g - diffuseColor.b);
+          float goldenMeadow = smoothstep(0.16, 0.32, diffuseColor.g - diffuseColor.b)
+                             * smoothstep(0.35, 0.18, diffuseColor.b);
           float grassOnly = greenMask * notPond;
+          float meadowMask = max(greenMask, goldenMeadow) * notPond;
 
           vec3 springGrass = vec3(diffuseColor.r * 0.93, diffuseColor.g * 1.09, diffuseColor.b * 0.95);
           diffuseColor.rgb = mix(diffuseColor.rgb, springGrass, grassOnly * uSpring);
@@ -83,7 +86,7 @@ export function Island() {
           float drift = 0.5
             + 0.28 * sin(vWorldXZ.x * 0.65 + cos(vWorldXZ.y * 0.55) * 1.4)
             + 0.22 * cos(vWorldXZ.y * 0.85 - sin(vWorldXZ.x * 0.48) * 1.2);
-          float snowCover = clamp(uSnow * mix(0.45, 1.15, grassOnly) * mix(0.75, 1.08, drift), 0.0, 1.0) * notPond;
+          float snowCover = clamp(uSnow * mix(0.45, 1.15, meadowMask) * mix(0.75, 1.08, drift), 0.0, 1.0) * notPond;
           vec3 snowCol = mix(vec3(0.73, 0.79, 0.87), vec3(0.83, 0.88, 0.94), drift);
           diffuseColor.rgb = mix(diffuseColor.rgb, snowCol, snowCover);`,
         );

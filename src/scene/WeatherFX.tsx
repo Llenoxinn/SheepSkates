@@ -109,7 +109,7 @@ export function WeatherFX() {
     const petalGeo = buildPetalGeo();
     const leafGeo = buildLeafGeo();
     const snowGeo = new THREE.CircleGeometry(0.046, 6);
-    const rainGeo = new THREE.BoxGeometry(0.013, 0.46, 0.013);
+    const rainGeo = new THREE.BoxGeometry(0.018, 0.56, 0.018);
     const splashGeo = new THREE.RingGeometry(0.032, 0.056, 12);
     splashGeo.rotateX(-Math.PI / 2);
     const mistGeo = new THREE.PlaneGeometry(1, 1);
@@ -196,7 +196,7 @@ export function WeatherFX() {
     if (rMesh) {
       const n = rAmt > 0.02 ? Math.round(RAIN_N * clamp(rAmt * 1.1, 0, 1)) : 0;
       rMesh.count = n;
-      assets.rainMat.opacity = clamp(rAmt * 0.42, 0, 0.42);
+      assets.rainMat.opacity = clamp(rAmt * 0.56, 0, 0.56);
       const windX = 1.4 + wind * 2.2, tilt = Math.atan2(windX, 16);
       for (let i = 0; i < n; i++) {
         const it = pools.rain[i]!;
