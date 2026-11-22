@@ -104,12 +104,13 @@ function WeatherGlyph({ mode }: { mode: WeatherMode }) {
   }
 }
 
-export function SeasonDial() {
+export function SeasonDial({ live = true }: { live?: boolean }) {
   const season = useUI(s => s.season);
   const autoSeason = useUI(s => s.autoSeason);
   const weatherMode = useUI(s => s.weatherMode);
   const icyPlaza = useUI(s => s.icyPlaza);
   const rainSlow = useUI(s => s.rainSlow);
+  const tab = live ? 0 : -1;
 
   const dialRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -185,6 +186,7 @@ export function SeasonDial() {
             className={`dial-q dial-q-${id}`}
             aria-label={`Select ${SEASON_LABELS[id]}`}
             aria-pressed={season === id && !autoSeason}
+            tabIndex={tab}
             title={SEASON_LABELS[id]}
             onClick={() => {
               Sfx.unlock();
@@ -199,6 +201,7 @@ export function SeasonDial() {
           className={`dial-hub ${autoSeason ? 'on' : ''}`}
           aria-label={autoSeason ? 'Pause automatic season cycle' : 'Auto-cycle seasons'}
           aria-pressed={autoSeason}
+          tabIndex={tab}
           title={autoSeason ? 'Auto cycle: On' : 'Auto cycle: Off'}
           onClick={() => {
             Sfx.unlock();
@@ -228,6 +231,7 @@ export function SeasonDial() {
             type="button"
             className={`auto-pill ${autoSeason ? 'on' : ''}`}
             aria-pressed={autoSeason}
+            tabIndex={tab}
             onClick={() => {
               Sfx.unlock();
               Sfx.tick();
@@ -250,6 +254,7 @@ export function SeasonDial() {
                 className={active ? 'active' : ''}
                 aria-label={`Weather: ${WEATHER_LABELS[mode]}`}
                 aria-pressed={active}
+                tabIndex={tab}
                 title={`Weather: ${WEATHER_LABELS[mode]}`}
                 onClick={() => {
                   Sfx.unlock();

@@ -131,6 +131,7 @@ const nextName = () => {
 export interface SheepWorld {
   flock: readonly Sheep[];
   readonly selected: Sheep | null;
+  readonly livePlay?: boolean;
   readonly obstacles: readonly Obstacle[];
   readonly rails: readonly RailSegment[];
   keys: Readonly<Record<string, boolean>>;
@@ -266,10 +267,10 @@ export class Sheep {
   }
   revive() { this.dying = false; this.gone = false; this.root.visible = true; this.spawnPop(); }
 
-  private launch(type: TrickType | 'grindpop') {
+  private launch(type: TrickType | 'grindpop', w: SheepWorld) {
     const vy = { ollie: 5.4, kickflip: 5.9, spin: 6.4, grindpop: 5.3 }[type];
     this.vy = vy; this.inAir = true; this.airT = 0; this.airDur = (2 * vy / GRAVITY) * 1.14; this.trick = type; this.caught = false;
-    this.sqT = 0; this.sqV += 7; Sfx.whoosh();
+    this.sqT = 0; this.sqV += 7; if (w.livePlay !== false) Sfx.whoosh();
   }
   private land(w: SheepWorld, impactSpeed = 5.5) {
     this.y = 0; this.vy = 0; this.inAir = false; this.flip = 0; this.spin = 0; this.pitch = 0;
@@ -284,8 +285,8 @@ export class Sheep {
           ? '#edf4fb'
           : undefined;
     w.puff(this.pos, Math.round(7 + impact * 5), 1.4 + impact * 0.55, 0.85 + impact * 0.35, landTint);
-    Sfx.land(onConcrete ? 'concrete' : 'grass', impact);
-    if (this.trick === 'drop' || this.trick === 'grindout' || (w.selected === this && impactSpeed > 5.4)) {
+    if (w.livePlay !== false) Sfx.land(onConcrete ? 'concrete' : 'grass', impact);
+    if (w.livePlay !== false && (this.trick === 'drop' || this.trick === 'grindout' || (w.selected === this && impactSpeed > 5.4))) {
       const amt = this.trick === 'drop' ? 0.13 : this.trick === 'grindout' ? 0.095 : clamp((impactSpeed - 4.8) * 0.038, 0.035, 0.1);
       w.shake(amt);
     }
@@ -296,7 +297,7 @@ export class Sheep {
     else if (t === 'spin') w.award('360', 200, x, 1.3, z);
     else if (t === 'grindout') { w.award('Boardslide', 300, x, 1.3, z, true); this.finishGrind(w); }
     else if (t === 'grindpop' && this.state === 'grind') this.finishGrind(w);
-    else if (t === 'drop') Sfx.baa(this.voicePitch * 1.06, this.voiceVib, this.voiceDur);
+    else if (t === 'drop' && w.livePlay !== false) Sfx.baa(this.voicePitch * 1.06, this.voiceVib, this.voiceDur);
   }
 
   /* ---------------- grind sequence ---------------- */
@@ -372,7 +373,7 @@ export class Sheep {
     const g = this.grind!; this.onRail = true; this.inAir = false; this.vy = 0; this.y = g.railY; this.trick = null; this.flip = 0; this.spin = 0;
     g.phase = 'slide'; this.slideYawT = Math.PI / 2; this.sqV -= 5; this.speed = Math.max(this.speed, 2.6);
     for (let i = 0; i < 10; i++) w.spark(this.pos.x, g.top + 0.02, this.pos.z, g.dir.x, g.dir.z);
-    Sfx.clank(); Sfx.startHiss();
+    if (w.livePlay !== false) { Sfx.clank(); Sfx.startHiss(); }
   }
   /** Returns a seek target, or null when the grind drives movement itself. */
   private grindStep(dt: number, w: SheepWorld): THREE.Vector3 | null {
@@ -437,7 +438,7 @@ export class Sheep {
     const onConcrete = isOnPlaza(p.x, p.z);
     const ice = grounded && onConcrete ? envState.ice : 0;
     const rain = grounded ? envState.rain : 0;
-    if (this.pending) { this.pending.t += dt; if (this.pending.t > 0.09) { this.launch(this.pending.type); this.pending = null; } }
+    if (this.pending) { this.pending.t += dt; if (this.pending.t > 0.09) { this.launch(this.pending.type, w); this.pending = null; } }
 
     let want: THREE.Vector3 | null = null, max = 0;
     const weatherPace = (1 - 0.22 * rain) * (1 + 0.08 * ice);
