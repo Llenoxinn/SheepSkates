@@ -1,12 +1,14 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, type ComponentRef } from 'react';
 import * as THREE from 'three';
-import { useThree } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { Environment, Lightformer, OrbitControls, SoftShadows } from '@react-three/drei';
 import { Bloom, EffectComposer, HueSaturation, N8AO, SMAA, TiltShift2, ToneMapping, Vignette } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
+import { world } from '../game/world';
 
 const TARGET = new THREE.Vector3(0.4, 0, 0.6);
 const CAM_DIR = new THREE.Vector3(0, 25, 21).normalize();
+const _prevShake = new THREE.Vector3();
 
 /** Warm key light with soft PCSS shadows + studio lightformer environment (no HDR download). */
 export function Lighting() {
@@ -33,13 +35,25 @@ export function Lighting() {
 export function CameraRig() {
   const camera = useThree(s => s.camera);
   const size = useThree(s => s.size);
+  const ctrlRef = useRef<ComponentRef<typeof OrbitControls>>(null);
   useEffect(() => {
+    _prevShake.set(0, 0, 0);
     const d = 42 * Math.max(1, 1.55 / (size.width / size.height));
     camera.position.copy(TARGET).addScaledVector(CAM_DIR, d);
     camera.lookAt(TARGET);
+    return () => { _prevShake.set(0, 0, 0); };
   }, [camera, size.width, size.height]);
+  useFrame(() => {
+    const ctrl = ctrlRef.current;
+    camera.position.sub(_prevShake);
+    if (ctrl) ctrl.target.sub(_prevShake);
+    _prevShake.copy(world.shakeOffset);
+    camera.position.add(_prevShake);
+    if (ctrl) ctrl.target.add(_prevShake);
+  });
   return (
     <OrbitControls
+      ref={ctrlRef}
       makeDefault target={TARGET} enableDamping dampingFactor={0.07} enablePan={false}
       rotateSpeed={0.55} zoomSpeed={0.8} minPolarAngle={0.3} maxPolarAngle={1.15} minDistance={12} maxDistance={70}
     />

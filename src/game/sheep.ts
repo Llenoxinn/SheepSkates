@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { BOARD_COLORS, BOUNDS, GRAVITY, NAMES, OBSTACLES, RAIL, RAIL_Y, SHEEP_SCALE } from './config';
-import { clamp, damp, dampA, easeIO, easeInBack, easeOutBack, pick, rand, rng, wrapA } from './math';
+import { BOARD_COLORS, BOUNDS, GRAVITY, isOnPlaza, NAMES, OBSTACLES, RAIL, RAIL_Y, SHEEP_SCALE } from './config';
+import { clamp, damp, dampA, easeInBack, easeOutBack, pick, rand, rng, wrapA } from './math';
 import { Sfx } from './sfx';
 import type { SheepState, TrickType } from './store';
 import { baked, radialTex, woolNormal } from './textures';
@@ -80,6 +80,7 @@ const nextName = () => {
 
 export interface SheepWorld {
   flock: readonly Sheep[];
+  readonly selected: Sheep | null;
   keys: Readonly<Record<string, boolean>>;
   cameraForward(out: THREE.Vector3): THREE.Vector3;
   puff(p: THREE.Vector3, n: number, spread?: number, size?: number): void;
@@ -89,6 +90,7 @@ export interface SheepWorld {
   bumpCones(s: Sheep): void;
   onStateChanged(s: Sheep): void;
   randomSpot(wide: boolean, out: THREE.Vector3): THREE.Vector3;
+  shake(amount: number): void;
 }
 
 type Grind = { phase: 'approach' | 'runup' | 'up' | 'slide' | 'out'; S: THREE.Vector3; E: THREE.Vector3; dir: THREE.Vector3; L: number; P: THREE.Vector3; ang: number; s: number; after: SheepState };
@@ -116,7 +118,7 @@ export class Sheep {
   state: SheepState; after: SheepState = 'idle';
   heading: number; speed = 0; target = new THREE.Vector3(); hasTarget = false; private tTimer = 0;
   y = 0; vy = 0; inAir = false; onRail = false;
-  private airT = 0; private airDur = 1; private trick: AirTrick = null; private pending: { type: TrickType | 'grindpop'; t: number } | null = null;
+  private airT = 0; private airDur = 1; private trick: AirTrick = null; private caught = false; private pending: { type: TrickType | 'grindpop'; t: number } | null = null;
   private flip = 0; private spin = 0; private pitch = 0; private slideYaw = 0; private slideYawT = 0; private leanA = 0; private turnRate = 0;
   sqV = 0; private sq = 0; private sqT = 0;
   private headYaw = 0; private headYawT = 0; private headPitch = 0; private lookT = rand(0, 2); private grazeT = 0; private blinkT = rand(1, 4); private blinkA = 0;
@@ -197,13 +199,20 @@ export class Sheep {
 
   private launch(type: TrickType | 'grindpop') {
     const vy = { ollie: 5.4, kickflip: 5.9, spin: 6.4, grindpop: 5.3 }[type];
-    this.vy = vy; this.inAir = true; this.airT = 0; this.airDur = 2 * vy / GRAVITY; this.trick = type;
+    this.vy = vy; this.inAir = true; this.airT = 0; this.airDur = (2 * vy / GRAVITY) * 1.14; this.trick = type; this.caught = false;
     this.sqT = 0; this.sqV += 7; Sfx.whoosh();
   }
-  private land(w: SheepWorld) {
+  private land(w: SheepWorld, impactSpeed = 5.5) {
     this.y = 0; this.vy = 0; this.inAir = false; this.flip = 0; this.spin = 0; this.pitch = 0;
     this.sqV -= Math.min(9, 4 + this.airT * 6);
-    w.puff(this.pos, 7, 1.6, 1); Sfx.land();
+    w.puff(this.pos, 7, 1.6, 1);
+    const onConcrete = isOnPlaza(this.pos.x, this.pos.z);
+    const impact = clamp(impactSpeed / 6.5, 0.55, 1.55);
+    Sfx.land(onConcrete ? 'concrete' : 'grass', impact);
+    if (this.trick === 'drop' || this.trick === 'grindout' || (w.selected === this && impactSpeed > 5.4)) {
+      const amt = this.trick === 'drop' ? 0.13 : this.trick === 'grindout' ? 0.095 : clamp((impactSpeed - 4.8) * 0.038, 0.035, 0.1);
+      w.shake(amt);
+    }
     const t = this.trick; this.trick = null;
     const { x, z } = this.pos;
     if (t === 'ollie') w.award('Ollie', 50, x, 1.3, z);
@@ -346,15 +355,24 @@ export class Sheep {
     // vertical motion + tricks
     const yPrev = this.y;
     if (this.inAir) {
-      this.vy -= GRAVITY * dt; this.y += this.vy * dt; this.airT += dt;
+      const apex = this.trick !== 'drop' ? clamp(1 - Math.abs(this.vy) / 1.5, 0, 1) : 0;
+      const grav = GRAVITY * (1 - 0.52 * apex * apex);
+      this.vy -= grav * dt; this.y += this.vy * dt; this.airT += dt;
       const k = clamp(this.airT / this.airDur, 0, 1);
-      if (this.trick === 'kickflip') this.flip = easeIO(k) * Math.PI * 2;
-      if (this.trick === 'spin') this.spin = easeIO(k) * Math.PI * 2;
+      if (this.trick === 'kickflip') {
+        const fk = clamp(k / 0.74, 0, 1);
+        this.flip = (1 - (1 - fk) ** 3) * Math.PI * 2;
+        if (fk >= 1 && !this.caught) { this.caught = true; this.sqV -= 2.2; }
+      }
+      if (this.trick === 'spin') {
+        const sk = clamp(k / 0.82, 0, 1);
+        this.spin = (1 - (1 - sk) ** 3) * Math.PI * 2;
+      }
       this.pitch = -0.5 * Math.sin(clamp(this.airT / 0.36, 0, 1) * Math.PI);
       const g = this.grind, crossing = this.vy < 0 && this.y <= RAIL_Y && yPrev >= RAIL_Y - 0.06;
       if (this.state === 'grind' && g && g.phase === 'up' && crossing && g.s > -0.45 && g.s < g.L - 0.4) this.landRail();
       else if (this.state === 'ride' && crossing && this.catchRail(w)) { /* now sliding */ }
-      else if (this.y <= 0 && this.vy < 0) this.land(w);
+      else if (this.y <= 0 && this.vy < 0) this.land(w, Math.abs(this.vy));
     } else if (this.onRail) this.y = RAIL_Y;
 
     if (!this.inAir) w.bumpCones(this);

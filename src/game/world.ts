@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { CONES, OBSTACLES, PLAZA_TOP } from './config';
+import { CONES, isOnPlaza, OBSTACLES, PLAZA_TOP } from './config';
 import { clamp, damp, pick, rand } from './math';
 import { Sfx } from './sfx';
 import { Sheep, type SheepWorld } from './sheep';
@@ -43,6 +43,7 @@ class World implements SheepWorld {
   private history: Cmd[] = []; private future: Cmd[] = [];
   private combo = 1; private comboT = 0; private score = 0;
   private barX = 0; private barY = 0; private barFresh = true;
+  private shakeAmp = 0; private shakeT = 0; readonly shakeOffset = new THREE.Vector3();
 
   constructor() {
     const ring = (inner: number, outer: number, color: string) => {
@@ -134,6 +135,10 @@ class World implements SheepWorld {
     }
   }
   onStateChanged(s: Sheep) { if (s === this.selected) this.syncUI(); }
+  shake(amount: number) {
+    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    this.shakeAmp = Math.min(0.16, Math.max(this.shakeAmp, amount));
+  }
 
   /* ---------------- score + floating text ---------------- */
   private toScreen(x: number, y: number, z: number): [number, number, boolean] {
@@ -188,9 +193,9 @@ class World implements SheepWorld {
 
   /* ---------------- selection + commands ---------------- */
   select(s: Sheep) {
-    if (this.selected === s) { s.sqV += 6; Sfx.baa(1 + Math.random() * 0.2); this.say(s, pick(['baa!', 'baaa~', 'meh', 'rad!', 'hi :)', 'wheee'])); return; }
+    if (this.selected === s) { s.sqV += 6; Sfx.baa(s.voicePitch * rand(1.02, 1.14), s.voiceVib, s.voiceDur); this.say(s, pick(['baa!', 'baaa~', 'meh', 'rad!', 'hi :)', 'wheee'])); return; }
     this.selected = s; this.barFresh = true;
-    s.sqV += 7; Sfx.pop(); Sfx.baa(); this.say(s, pick(['baa!', 'baaa?', 'ready!', 'yo!']));
+    s.sqV += 7; Sfx.pop(); Sfx.baa(s.voicePitch, s.voiceVib, s.voiceDur); this.say(s, pick(['baa!', 'baaa?', 'ready!', 'yo!']));
     overlay.sel?.classList.remove('on'); void overlay.sel?.offsetWidth; overlay.sel?.classList.add('on');
     this.syncUI();
   }
@@ -278,7 +283,37 @@ class World implements SheepWorld {
     this.comboT -= dt;
     if (this.comboT <= 0 && this.combo > 1) { this.combo = 1; useUI.setState({ combo: 1 }); }
 
+    if (this.shakeAmp > 0.001) {
+      this.shakeT += dt * 44;
+      this.shakeAmp *= Math.exp(-15 * dt);
+      this.shakeOffset.set(
+        Math.sin(this.shakeT * 1.13) * this.shakeAmp,
+        Math.cos(this.shakeT * 1.71) * this.shakeAmp * 0.75,
+        Math.sin(this.shakeT * 0.89) * this.shakeAmp * 0.5,
+      );
+    } else {
+      this.shakeAmp = 0;
+      this.shakeOffset.set(0, 0, 0);
+    }
+
     const h = this.hovered, sel = this.selected;
+    if (sel && !sel.dying) {
+      const grounded = !sel.inAir && !sel.onRail;
+      Sfx.setRoll(Math.abs(sel.speed), isOnPlaza(sel.pos.x, sel.pos.z), grounded);
+    } else {
+      let fastest: Sheep | null = null;
+      let bestSp = 0;
+      for (const s of this.flock) {
+        if (s.dying || s.inAir || s.onRail) continue;
+        const sp = Math.abs(s.speed);
+        if (sp > bestSp) { bestSp = sp; fastest = s; }
+      }
+      if (fastest && bestSp > 0.15) {
+        Sfx.setRoll(bestSp * 0.55, isOnPlaza(fastest.pos.x, fastest.pos.z), true);
+      } else {
+        Sfx.setRoll(0, true, false);
+      }
+    }
     if (h && h !== sel && !h.dying) {
       h.hoverK = damp(h.hoverK, 1, 14, dt);
       this.hoverRing.position.set(h.pos.x, PLAZA_TOP + 0.01, h.pos.z); this.hoverRing.material.opacity = 0.85 * h.hoverK; this.hoverRing.scale.setScalar(0.95 + Math.sin(t * 6) * 0.04);
