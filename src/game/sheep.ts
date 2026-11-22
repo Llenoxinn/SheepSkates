@@ -32,29 +32,31 @@ const ellipsoid = (x: number, y: number, z: number, ws = 16, hs = 12) => { const
 
 const GEO = {
   wool: woolGeo(7, 72, 0.4, 0.28, 0.5, 0.11, 0.165, -0.6, 14),
-  tuft: woolGeo(3, 12, 0.1, 0.05, 0.09, 0.045, 0.065, -0.3, 10),
-  head: ellipsoid(0.145, 0.165, 0.2, 28, 20),
-  eye: new THREE.SphereGeometry(0.042, 16, 12), pupil: new THREE.SphereGeometry(0.024, 12, 8), glint: new THREE.SphereGeometry(0.009, 6, 4),
-  ear: (() => { const g = ellipsoid(0.095, 0.032, 0.055, 14, 10); g.translate(0.08, 0, 0); return g; })(),
-  cheek: ellipsoid(0.032, 0.019, 0.013, 10, 8),
+  tuft: woolGeo(3, 14, 0.13, 0.065, 0.115, 0.052, 0.075, -0.3, 10),
+  head: ellipsoid(0.195, 0.21, 0.235, 28, 20),
+  eye: new THREE.SphereGeometry(0.062, 16, 12), pupil: new THREE.SphereGeometry(0.036, 12, 8), glint: new THREE.SphereGeometry(0.015, 8, 6),
+  nose: ellipsoid(0.038, 0.026, 0.022, 12, 8),
+  ear: (() => { const g = ellipsoid(0.115, 0.038, 0.065, 14, 10); g.translate(0.095, 0, 0); return g; })(),
+  cheek: ellipsoid(0.048, 0.028, 0.018, 10, 8),
   leg: new THREE.CylinderGeometry(0.042, 0.036, 0.2, 12),
   tail: new THREE.IcosahedronGeometry(0.085, 3),
   deck: new RoundedBoxGeometry(0.42, 0.05, 1.08, 4, 0.022),
   grip: new RoundedBoxGeometry(0.38, 0.012, 1.0, 2, 0.005),
   truck: new RoundedBoxGeometry(0.3, 0.04, 0.08, 2, 0.012),
   wheel: (() => { const g = new THREE.CylinderGeometry(0.056, 0.056, 0.05, 20); g.rotateZ(Math.PI / 2); return g; })(),
-  hat: new THREE.SphereGeometry(0.125, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2),
-  pom: new THREE.IcosahedronGeometry(0.05, 3),
+  hat: new THREE.SphereGeometry(0.16, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+  pom: new THREE.IcosahedronGeometry(0.058, 3),
   hit: new THREE.BoxGeometry(0.8, 1.1, 1.3),
   blob: new THREE.CircleGeometry(0.6, 32),
 };
 const woolN = baked('woolNormal', () => woolNormal(8));
 const MAT = {
   wool: new THREE.MeshPhysicalMaterial({ color: '#ffffff', vertexColors: true, roughness: 1, normalMap: woolN, normalScale: new THREE.Vector2(0.9, 0.9), sheen: 1, sheenRoughness: 0.5, sheenColor: new THREE.Color('#fff4e0') }),
-  face: new THREE.MeshStandardMaterial({ color: '#3a2f2b', roughness: 0.65 }),
+  face: new THREE.MeshStandardMaterial({ color: '#4a3b35', roughness: 0.62 }),
   eye: new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.2 }),
   pupil: new THREE.MeshStandardMaterial({ color: '#141010', roughness: 0.15 }),
   glint: new THREE.MeshBasicMaterial({ color: '#ffffff' }),
+  nose: new THREE.MeshStandardMaterial({ color: '#d69595', roughness: 0.55 }),
   cheek: new THREE.MeshStandardMaterial({ color: '#ff9fb4', roughness: 0.6 }),
   grip: new THREE.MeshStandardMaterial({ color: '#3f3d48', roughness: 0.95 }),
   truck: new THREE.MeshStandardMaterial({ color: '#bcc1cc', roughness: 0.3, metalness: 0.8 }),
@@ -102,6 +104,7 @@ export type SheepOpts = { x?: number; z?: number; heading?: number; state?: Shee
 export class Sheep {
   readonly id = nextId++;
   readonly name: string; readonly color: number; readonly hat: boolean;
+  readonly voicePitch: number; readonly voiceVib: number; readonly voiceDur: number;
   readonly root = new THREE.Group(); readonly air = new THREE.Group();
   private lean = new THREE.Group(); private board = new THREE.Group(); private rider = new THREE.Group();
   private head = new THREE.Group(); private eyes = new THREE.Group(); private tail: THREE.Mesh;
@@ -125,6 +128,9 @@ export class Sheep {
     this.name = o.name ?? nextName(); usedNames.add(this.name);
     this.color = o.color ?? ((Math.random() * BOARD_COLORS.length) | 0);
     this.hat = o.hat ?? Math.random() < 0.35;
+    this.voicePitch = rand(0.82, 1.24);
+    this.voiceVib = rand(6.2, 9.2);
+    this.voiceDur = rand(0.42, 0.62);
     this.state = o.state ?? 'idle'; this.heading = o.heading ?? 0;
     this.root.position.set(o.x ?? 0, 0, o.z ?? 0);
     this.root.add(this.lean); this.lean.add(this.air); this.air.add(this.board, this.rider);
@@ -145,23 +151,24 @@ export class Sheep {
     const body = new THREE.Mesh(GEO.wool, MAT.wool); body.position.y = 0.44; this.rider.add(body);
     this.tail = new THREE.Mesh(GEO.tail, MAT.wool); this.tail.position.set(0, 0.5, -0.53); this.rider.add(this.tail);
 
-    this.head.rotation.order = 'YXZ'; this.head.position.set(0, 0.52, 0.36); this.rider.add(this.head);
-    const face = new THREE.Mesh(GEO.head, MAT.face); face.position.set(0, -0.01, 0.16); face.rotation.x = 0.25; this.head.add(face);
-    this.eyes.position.set(0, 0.04, 0.305); this.head.add(this.eyes);
+    this.head.rotation.order = 'YXZ'; this.head.position.set(0, 0.55, 0.39); this.rider.add(this.head);
+    const face = new THREE.Mesh(GEO.head, MAT.face); face.position.set(0, -0.01, 0.18); face.rotation.x = 0.22; this.head.add(face);
+    this.eyes.position.set(0, 0.058, 0.375); this.head.add(this.eyes);
+    const nose = new THREE.Mesh(GEO.nose, MAT.nose); nose.position.set(0, -0.045, 0.405); this.head.add(nose);
     for (const s of [-1, 1]) {
-      const e = new THREE.Group(); e.position.set(s * 0.072, 0, 0); this.eyes.add(e);
+      const e = new THREE.Group(); e.position.set(s * 0.092, 0, 0); this.eyes.add(e);
       e.add(new THREE.Mesh(GEO.eye, MAT.eye));
-      const p = new THREE.Mesh(GEO.pupil, MAT.pupil); p.position.set(s * 0.004, 0.002, 0.028); e.add(p);
-      const gl = new THREE.Mesh(GEO.glint, MAT.glint); gl.position.set(s * 0.004 + 0.01, 0.014, 0.048); e.add(gl);
-      const ck = new THREE.Mesh(GEO.cheek, MAT.cheek); ck.position.set(s * 0.1, -0.07, 0.29); ck.rotation.y = s * 0.5; this.head.add(ck);
-      const ep = new THREE.Group(); ep.position.set(s * 0.11, 0.07, 0.12);
+      const p = new THREE.Mesh(GEO.pupil, MAT.pupil); p.position.set(s * 0.005, 0.003, 0.038); e.add(p);
+      const gl = new THREE.Mesh(GEO.glint, MAT.glint); gl.position.set(s * 0.005 + 0.015, 0.02, 0.065); e.add(gl);
+      const ck = new THREE.Mesh(GEO.cheek, MAT.cheek); ck.position.set(s * 0.132, -0.052, 0.345); ck.rotation.y = s * 0.52; this.head.add(ck);
+      const ep = new THREE.Group(); ep.position.set(s * 0.145, 0.085, 0.14);
       const em = new THREE.Mesh(GEO.ear, MAT.face); if (s < 0) em.rotation.y = Math.PI; ep.add(em); this.head.add(ep); this.ears.push({ g: ep, s });
     }
     if (this.hat) {
       const hm = hatMats[(this.color + 3) % BOARD_COLORS.length]!;
-      const h = new THREE.Mesh(GEO.hat, hm); h.position.set(0, 0.1, 0.13); h.scale.set(1, 0.85, 1.05); h.rotation.x = -0.15; this.head.add(h);
-      const pm = new THREE.Mesh(GEO.pom, hm); pm.position.set(0, 0.22, 0.11); this.head.add(pm);
-    } else { const t = new THREE.Mesh(GEO.tuft, MAT.wool); t.position.set(0, 0.12, 0.13); this.head.add(t); }
+      const h = new THREE.Mesh(GEO.hat, hm); h.position.set(0, 0.135, 0.15); h.scale.set(1, 0.85, 1.05); h.rotation.x = -0.15; this.head.add(h);
+      const pm = new THREE.Mesh(GEO.pom, hm); pm.position.set(0, 0.285, 0.13); this.head.add(pm);
+    } else { const t = new THREE.Mesh(GEO.tuft, MAT.wool); t.position.set(0, 0.155, 0.15); this.head.add(t); }
 
     this.root.traverse(n => { if ((n as THREE.Mesh).isMesh) { n.castShadow = true; n.receiveShadow = true; } });
 
@@ -204,7 +211,7 @@ export class Sheep {
     else if (t === 'spin') w.award('360', 200, x, 1.3, z);
     else if (t === 'grindout') { w.award('Boardslide', 300, x, 1.3, z, true); this.finishGrind(w); }
     else if (t === 'grindpop' && this.state === 'grind') this.finishGrind(w);
-    else if (t === 'drop') Sfx.baa(1.1);
+    else if (t === 'drop') Sfx.baa(this.voicePitch * 1.06, this.voiceVib, this.voiceDur);
   }
 
   /* ---------------- grind sequence ---------------- */
