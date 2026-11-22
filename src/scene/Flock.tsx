@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
+import { useAppPhase } from '../game/appPhase';
 import { BOUNDS } from '../game/config';
 import type { ParkProp } from '../game/props';
 import { Sfx } from '../game/sfx';
@@ -43,7 +44,13 @@ export function Flock() {
       return { sheep: null, prop: pickProp() };
     };
 
+    const isInteractive = () => useAppPhase.getState().phase === 'playing' && !useAppPhase.getState().howToPlayOpen;
+
     const onMove = (e: PointerEvent) => {
+      if (!isInteractive()) {
+        el.style.cursor = 'default';
+        return;
+      }
       if (useUI.getState().draggingPalette) return;
       if (down?.prop && (useUI.getState().buildMode || down.prop === world.selectedProp)) {
         const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
@@ -68,6 +75,7 @@ export function Flock() {
     };
 
     const onDown = (e: PointerEvent) => {
+      if (!isInteractive()) return;
       Sfx.unlock();
       if (useUI.getState().draggingPalette) return;
       aim(e);
@@ -84,6 +92,11 @@ export function Flock() {
 
     const onUp = (e: PointerEvent) => {
       if (!down) return;
+      if (!isInteractive()) {
+        down = null;
+        world.setOrbitEnabled?.(true);
+        return;
+      }
       const cur = down;
       down = null;
       world.setOrbitEnabled?.(true);
@@ -119,7 +132,7 @@ export function Flock() {
     };
 
     const onWinMove = (e: PointerEvent) => {
-      if (!useUI.getState().draggingPalette) return;
+      if (!isInteractive() || !useUI.getState().draggingPalette) return;
       const r = el.getBoundingClientRect();
       const insideCanvas = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
       const overUi = (e.target as HTMLElement | null)?.closest?.('.palette, .hud, #bar');
@@ -137,6 +150,10 @@ export function Flock() {
 
     const onWinUp = (e: PointerEvent) => {
       if (!useUI.getState().draggingPalette) return;
+      if (!isInteractive()) {
+        world.cancelPaletteDrag();
+        return;
+      }
       const target = e.target as HTMLElement | null;
       if (target?.closest?.('.palette-item')) {
         world.finishPaletteDrag();
@@ -152,16 +169,28 @@ export function Flock() {
       world.cancelPaletteDrag();
     };
 
-    const onDbl = (e: MouseEvent) => { aim(e); pickSheep()?.doTrick('spin'); };
+    const onDbl = (e: MouseEvent) => { if (!isInteractive()) return; aim(e); pickSheep()?.doTrick('spin'); };
 
     const onKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.closest?.('input, textarea')) return;
+      const app = useAppPhase.getState();
       const k = e.key.toLowerCase(), mod = e.ctrlKey || e.metaKey;
+      if (app.howToPlayOpen) {
+        if (k === 'escape' || k === 'h' || e.key === '?') {
+          e.preventDefault();
+          Sfx.unlock();
+          Sfx.tick();
+          app.closeHowToPlay();
+        }
+        return;
+      }
+      if (app.phase !== 'playing') return;
       Sfx.unlock();
       if (mod && k === 'z') { e.preventDefault(); if (e.shiftKey) world.redo(); else world.undo(); return; }
       if (mod && k === 'y') { e.preventDefault(); world.redo(); return; }
       if (mod && k === 'd') { e.preventDefault(); world.duplicate(); return; }
       if (mod) return;
+      if (k === 'h' || e.key === '?') { e.preventDefault(); Sfx.tick(); app.toggleHowToPlay(); return; }
       if (k === 'b') { world.toggleBuildMode(); return; }
       if (k === 'm') { useUI.setState({ sound: Sfx.toggle() }); return; }
       if (k === 'n') { world.spawn(); return; }
