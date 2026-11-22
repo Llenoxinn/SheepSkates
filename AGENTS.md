@@ -6,8 +6,10 @@
 
 ## 1. Tech Stack & Project Status
 
-- **Current Baseline:** Single-file HTML/CSS/ES module ([`index.html`](index.html), 1,164 lines, zero build step). Imports `three@0.164.1` (`OrbitControls`, `RoundedBoxGeometry`, `BufferGeometryUtils.mergeGeometries`, `RoomEnvironment`) via unpkg importmap, plus procedural Canvas2D textures, synthesized Web Audio (`Sfx`), and a projected DOM HUD.
-- **Target Architecture (Phases 0–1):** Vite + TypeScript (`strict`, `exactOptionalPropertyTypes`), local `three` + `@types/three`, Vitest (`src/sim/` + `src/editor/`), Playwright (WebGL/UI smoke), ESLint + Prettier, Zod (park JSON import validation).
+- **Current Stack:** Vite + TypeScript (`strict`) + React 19 + `@react-three/fiber`, `@react-three/drei`, `@react-three/postprocessing`, `zustand` (UI-only state), local `three`. See ADR-0004/0005.
+- **Layout:** `src/game/` (config, math, sfx, textures, `sheep.ts` rig+sim, `world.ts` orchestrator, `store.ts`), `src/scene/` (R3F components), `src/ui/` (React HUD). The legacy single file lives in `prototype/`.
+- **Rules of the stack:** the sim is imperative and driven from one `useFrame` in `Flock.tsx`; never push per-frame values through React state. Memoise procedural bakes with `baked()` (Suspense re-runs render bodies). Post-processing needs `<Canvas flat>` + the `ToneMapping` effect.
+- **Planned:** Vitest (`src/sim/` + commands), Playwright smoke via `scripts/shot.mjs`, ESLint + Prettier, Zod (park JSON import).
 
 ---
 
