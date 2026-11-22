@@ -1,6 +1,6 @@
 # ADR-0001: Procedural 3D Diorama with Zero External Assets
 
-- **Status:** Accepted
+- **Status:** Amended by [ADR-0005](0005-hybrid-procedural-and-cc0-textures.md)
 - **Date:** 2026-11-22
 
 ---

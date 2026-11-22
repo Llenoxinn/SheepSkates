@@ -1,6 +1,6 @@
 # ADR-0003: Projected HTML/CSS DOM Overlay for Editor HUD
 
-- **Status:** Accepted
+- **Status:** Amended by [ADR-0004](0004-react-three-fiber-stack.md)
 - **Date:** 2026-11-22
 
 ---
