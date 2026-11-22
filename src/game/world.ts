@@ -828,7 +828,8 @@ class World implements SheepWorld {
     tag.style.transform = `translate(${clamp((x0 + x1) / 2 - tw / 2, 8, innerWidth - tw - 8)}px, ${y1 + 8}px)`;
     const bw = bar.offsetWidth, bh = bar.offsetHeight;
     const tx = clamp((x0 + x1) / 2 - bw / 2, 8, innerWidth - bw - 8);
-    let ty = y1 + 36; if (ty + bh > innerHeight - 70) ty = y0 - bh - 14;
+    const bottomReserve = useUI.getState().buildMode ? 136 : 70;
+    let ty = y1 + 36; if (ty + bh > innerHeight - bottomReserve) ty = y0 - bh - 14;
     if (this.barFresh) { this.barX = tx; this.barY = ty; this.barFresh = false; }
     else if (!overlay.barHover) { this.barX = damp(this.barX, tx, 9, dt); this.barY = damp(this.barY, ty, 9, dt); }
     bar.style.left = `${this.barX}px`; bar.style.top = `${this.barY}px`;
