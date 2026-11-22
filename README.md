@@ -8,25 +8,22 @@ A cozy-tactile 3D pastoral skatepark diorama, interactive toybox, and skatepark 
 
 **Sheep Skate** fuses a storybook watercolor pasture with responsive street-skate physics and Figma-style direct manipulation. Select any skating sheep on the floating island to inspect, direct, ride via keyboard, pop flip tricks, grind the rail, knock over traffic cones, or populate the park with new pastel-decked flockmates.
 
-Today's repository hosts a self-contained single-file ES module prototype ([`index.html`](index.html), 1,164 lines, zero build step, zero external texture/model/audio assets). This documentation suite establishes the architecture, game design, art/audio direction, engineering standards, and phased roadmap to evolve the prototype into a modular TypeScript + Three.js interactive skatepark game and editor.
+Built with **Vite + TypeScript + React Three Fiber**: a painted procedural pasture (3K Canvas2D bake with derived normal maps), CC0 PBR relief on the concrete plaza and plywood ramps, soft PCSS shadows, and a post stack (N8AO ambient occlusion, tilt-shift miniature blur, ACES tone mapping, SMAA). The original single-file prototype is kept in [`prototype/index.html`](prototype/index.html). See [ADR-0004](docs/adr/0004-react-three-fiber-stack.md) and [ADR-0005](docs/adr/0005-hybrid-procedural-and-cc0-textures.md).
 
 ---
 
 ## Quick Start
 
-Because `index.html` uses browser-native `<script type="importmap">` loading `three@0.164.1`, serve the project root over HTTP rather than opening via `file://`:
-
 ```bash
-# Option 1: Node.js static server
-npx serve .
-
-# Option 2: Python built-in HTTP server
-python -m http.server 8000
+npm install
+npm run dev        # http://localhost:5173
+npm run build      # typecheck + production build in dist/
+npm run preview    # serve the production build
 ```
 
-Then open `http://localhost:3000` (for `serve`) or `http://localhost:8000` (for Python) in any modern WebGL2-capable browser. Click or press any key once inside the viewport to unlock the Web Audio API synthesizer.
+Open in any WebGL2 browser and click once to unlock audio. URL options: `?fx=0` turns off post-processing, `?demo` auto-selects a sheep.
 
-> **Target Tooling (Planned in Phase 0):** Once TypeScript + Vite are initialized per [the Implementation Plan](docs/IMPLEMENTATION_PLAN.md), development will run via `npm run dev`, `npm test`, and `npm run build`.
+Visual check (uses your installed Chrome): `node scripts/shot.mjs http://localhost:5173/?demo shot.png 6000`
 
 ---
 
@@ -77,3 +74,9 @@ Then open `http://localhost:3000` (for `serve`) or `http://localhost:8000` (for 
 | [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) | Verified `index.html` bug/tech-debt ledger and phased roadmap (Phase 0 through Phase 4) |
 | [`docs/AGENTIC_WORKFLOWS.md`](docs/AGENTIC_WORKFLOWS.md) | Trust spectrum, feature/bug/refactor workflows, prompt templates, test pyramid, and pre-PR review checklist |
 | [`docs/adr/README.md`](docs/adr/README.md) | Index and template for Architecture Decision Records (`0001` procedural assets, `0002` fixed-step sim, `0003` DOM HUD) |
+
+---
+
+## Credits
+
+PBR textures (`public/textures/`) are CC0 from [Poly Haven](https://polyhaven.com): *Smooth Concrete Floor*, *Plywood*, *Dirt*.
