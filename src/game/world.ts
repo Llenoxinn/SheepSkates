@@ -5,7 +5,7 @@ import { DEFAULT_PARK_PROPS, ParkProp, type RailSegment } from './props';
 import { Sfx } from './sfx';
 import { Sheep, type SheepWorld } from './sheep';
 import { useUI, type SheepState, type TrickType } from './store';
-import { stepEnvironment } from './weather';
+import { stepEnvironment, envState } from './weather';
 
 /* ------------------------------------------------------------------ */
 /* DOM overlay handles (registered by the React HUD)                    */
@@ -426,10 +426,13 @@ class World implements SheepWorld {
       this.shakeOffset.set(0, 0, 0);
     }
 
+    const icy = envState.ice > 0.35;
+    const wet = envState.wetness > 0.35;
+    Sfx.setAmbience(envState.rain, Math.max(envState.snow * 0.85, envState.fog * 0.55));
     const h = this.hovered, sel = this.selected;
     if (sel && !sel.dying) {
       const grounded = !sel.inAir && !sel.onRail;
-      Sfx.setRoll(Math.abs(sel.speed), isOnPlaza(sel.pos.x, sel.pos.z), grounded);
+      Sfx.setRoll(Math.abs(sel.speed), isOnPlaza(sel.pos.x, sel.pos.z), grounded, icy, wet);
     } else {
       let fastest: Sheep | null = null;
       let bestSp = 0;
@@ -439,9 +442,9 @@ class World implements SheepWorld {
         if (sp > bestSp) { bestSp = sp; fastest = s; }
       }
       if (fastest && bestSp > 0.15) {
-        Sfx.setRoll(bestSp * 0.55, isOnPlaza(fastest.pos.x, fastest.pos.z), true);
+        Sfx.setRoll(bestSp * 0.55, isOnPlaza(fastest.pos.x, fastest.pos.z), true, icy, wet);
       } else {
-        Sfx.setRoll(0, true, false);
+        Sfx.setRoll(0, true, false, icy, wet);
       }
     }
     if (h && h !== sel && !h.dying) {

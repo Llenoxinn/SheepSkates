@@ -7,6 +7,8 @@ let enabled = true;
 let hiss: { s: AudioBufferSourceNode; g: GainNode } | null = null;
 let hissCount = 0;
 let roll: { s: AudioBufferSourceNode; f: BiquadFilterNode; g: GainNode; concrete: boolean } | null = null;
+let rainAmb: { s: AudioBufferSourceNode; g: GainNode } | null = null;
+let windAmb: { s: AudioBufferSourceNode; g: GainNode } | null = null;
 let nbuf: AudioBuffer | null = null;
 
 function live(): AudioContext | null {
@@ -58,6 +60,12 @@ function silenceRoll(): void {
   if (!roll || !ctx) return;
   roll.g.gain.setTargetAtTime(0, ctx.currentTime, 0.04);
 }
+function silenceAmbience(): void {
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  if (rainAmb) rainAmb.g.gain.setTargetAtTime(0, now, 0.08);
+  if (windAmb) windAmb.g.gain.setTargetAtTime(0, now, 0.08);
+}
 
 export const Sfx = {
   unlock(): void {
@@ -76,6 +84,7 @@ export const Sfx = {
       hissCount = 0;
       fadeOutHiss();
       silenceRoll();
+      silenceAmbience();
     }
     return enabled;
   },
@@ -126,7 +135,7 @@ export const Sfx = {
     g.connect(master!);
     o.start(t); lfo.start(t); o.stop(t + d + 0.05); lfo.stop(t + d + 0.05);
   },
-  setRoll(speed: number, onConcrete: boolean, active: boolean): void {
+  setRoll(speed: number, onConcrete: boolean, active: boolean, icy = false, wet = false): void {
     if (!active || speed <= 0.15 || !enabled) {
       silenceRoll();
       return;
@@ -150,12 +159,48 @@ export const Sfx = {
     }
     const normSpeed = Math.max(0, Math.min(1, (speed - 0.15) / 5.5));
     const gainCurve = Math.pow(normSpeed, 0.85);
-    const targetFreq = onConcrete ? 320 + normSpeed * 820 : 180 + normSpeed * 300;
-    const targetQ = onConcrete ? 1.1 : 0.7;
-    const targetGain = onConcrete ? gainCurve * 0.075 : gainCurve * 0.045;
+    const targetFreq = onConcrete
+      ? (icy ? 480 + normSpeed * 1020 : wet ? 410 + normSpeed * 880 : 320 + normSpeed * 820)
+      : 180 + normSpeed * 300;
+    const targetQ = onConcrete ? (icy ? 1.65 : wet ? 0.9 : 1.1) : 0.7;
+    const targetGain = onConcrete
+      ? gainCurve * (icy ? 0.056 : wet ? 0.082 : 0.075)
+      : gainCurve * 0.045;
     roll.f.frequency.setTargetAtTime(targetFreq, now, 0.045);
     roll.f.Q.setTargetAtTime(targetQ, now, 0.045);
     roll.g.gain.setTargetAtTime(targetGain, now, 0.045);
+  },
+  setAmbience(rain: number, wind: number): void {
+    if (!enabled) {
+      silenceAmbience();
+      return;
+    }
+    const c = live(); if (!c) return;
+    const now = c.currentTime;
+    if (rain > 0.02) {
+      if (!rainAmb) {
+        const s = noiseSrc(c); s.loop = true;
+        const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.setValueAtTime(1050, now); f.Q.setValueAtTime(0.55, now);
+        const g = c.createGain(); g.gain.setValueAtTime(0, now);
+        s.connect(f).connect(g).connect(master!); s.start(now);
+        rainAmb = { s, g };
+      }
+      rainAmb.g.gain.setTargetAtTime(rain * 0.042, now, 0.25);
+    } else if (rainAmb) {
+      rainAmb.g.gain.setTargetAtTime(0, now, 0.25);
+    }
+    if (wind > 0.02) {
+      if (!windAmb) {
+        const s = noiseSrc(c); s.loop = true;
+        const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(340, now);
+        const g = c.createGain(); g.gain.setValueAtTime(0, now);
+        s.connect(f).connect(g).connect(master!); s.start(now);
+        windAmb = { s, g };
+      }
+      windAmb.g.gain.setTargetAtTime(wind * 0.026, now, 0.35);
+    } else if (windAmb) {
+      windAmb.g.gain.setTargetAtTime(0, now, 0.35);
+    }
   },
   startHiss(): void {
     const c = live(); if (!c) return;
