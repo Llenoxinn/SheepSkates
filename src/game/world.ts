@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { BOARD_COLORS, CONES, isOnPlaza, OBSTACLES, PLAZA_TOP } from './config';
+import { BOARD_COLORS, BUSHES, isOnPlaza, PLAZA_TOP, POND, type Obstacle } from './config';
 import { clamp, damp, pick, rand } from './math';
+import { DEFAULT_PARK_PROPS, ParkProp, type RailSegment } from './props';
 import { Sfx } from './sfx';
 import { Sheep, type SheepWorld } from './sheep';
 import { useUI, type SheepState, type TrickType } from './store';
@@ -13,8 +13,8 @@ export const overlay: { sel: HTMLElement | null; tag: HTMLElement | null; bar: H
   sel: null, tag: null, bar: null, layer: null, barHover: false,
 };
 
+const MAX_HISTORY = 100;
 type Cmd = { do: () => void; undo: () => void };
-type Cone = { pivot: THREE.Group; x: number; z: number; tilt: number; tv: number; axis: THREE.Vector3; cd: number };
 type Puff = { m: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>; v: THREE.Vector3; life: number; max: number; size: number; rotV: number };
 type Spark = { m: THREE.Mesh; v: THREE.Vector3; life: number; max: number };
 type SpeedLine = { m: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>; v: THREE.Vector3; life: number; max: number; len: number };
@@ -33,13 +33,17 @@ class World implements SheepWorld {
   readonly group = new THREE.Group();
   flock: Sheep[] = [];
   private dying: Sheep[] = [];
+  props: ParkProp[] = [];
+  private dyingProps: ParkProp[] = [];
+  readonly obstacles: Obstacle[] = [];
+  readonly rails: RailSegment[] = [];
   readonly hitTargets: THREE.Object3D[] = [];
+  readonly propHitTargets: THREE.Object3D[] = [];
   keys: Record<string, boolean> = {};
   camera: THREE.Camera | null = null;
   selected: Sheep | null = null;
   hovered: Sheep | null = null;
 
-  private cones: Cone[] = [];
   private puffs: Puff[] = []; private puffI = 0;
   private sparks: Spark[] = []; private sparkI = 0;
   private speedLines: SpeedLine[] = []; private speedLineI = 0;
@@ -60,25 +64,45 @@ class World implements SheepWorld {
     };
     this.hoverRing = ring(0.62, 0.7, '#ffffff');
     this.selRing = ring(0.64, 0.72, '#3b82f6');
-    this.buildCones();
     this.buildParticles();
+    this.seedProps();
     this.seedFlock();
   }
 
   /* ---------------- construction ---------------- */
-  private buildCones() {
-    const mat = new THREE.MeshStandardMaterial({ color: '#ff9a4d', roughness: 0.55 });
-    const white = new THREE.MeshStandardMaterial({ color: '#fff7ea', roughness: 0.55 });
-    const base = new RoundedBoxGeometry(0.34, 0.04, 0.34, 2, 0.015), body = new THREE.ConeGeometry(0.14, 0.42, 24), band = new THREE.CylinderGeometry(0.087, 0.1, 0.07, 24);
-    for (const [x, z] of CONES) {
-      const g = new THREE.Group(); g.position.set(x, PLAZA_TOP, z);
-      const pivot = new THREE.Group(); g.add(pivot);
-      const b = new THREE.Mesh(base, mat); b.position.y = 0.02; pivot.add(b);
-      const c = new THREE.Mesh(body, mat); c.position.y = 0.25; pivot.add(c);
-      const w = new THREE.Mesh(band, white); w.position.y = 0.25; pivot.add(w);
-      g.traverse(n => { if ((n as THREE.Mesh).isMesh) { n.castShadow = true; n.receiveShadow = true; } });
-      this.group.add(g);
-      this.cones.push({ pivot, x, z, tilt: 0, tv: 0, axis: new THREE.Vector3(1, 0, 0), cd: 0 });
+  private seedProps() {
+    for (const def of DEFAULT_PARK_PROPS) {
+      const p = new ParkProp(def);
+      this.props.push(p);
+      this.group.add(p.root);
+      this.propHitTargets.push(p.hit);
+    }
+    this.rebuildRegistry();
+  }
+  rebuildRegistry() {
+    this.obstacles.length = 0;
+    this.rails.length = 0;
+    this.obstacles.push(
+      { x: POND.x - 1.0, z: POND.z, r: 1.7, h: -1 },
+      { x: POND.x + 1.0, z: POND.z, r: 1.7, h: -1 },
+    );
+    for (const [bx, bz] of BUSHES) this.obstacles.push({ x: bx, z: bz, r: 0.55, h: 0.6 });
+    for (const p of this.props) {
+      if (p.dying) continue;
+      p.getObstacles(this.obstacles);
+      if (p.kind === 'rail') {
+        const seg = p.getRailSegment();
+        if (seg) this.rails.push(seg);
+      }
+    }
+  }
+  cancelGrindsOnRail(railId: number) {
+    for (const s of this.flock) {
+      if (s.state === 'grind' && s.grind && s.grind.railId === railId) {
+        const after = s.grind.after === 'ride' ? 'ride' : 'cruise';
+        s.setState(after, this);
+        this.onStateChanged(s);
+      }
     }
   }
   private buildParticles() {
@@ -112,7 +136,7 @@ class World implements SheepWorld {
       { x: -8, z: -2.4, heading: 1.2, state: 'idle', color: 5 }, { x: -6.6, z: 5.6, heading: -2.4, state: 'idle', color: 6 },
       { x: 9.6, z: 5.0, heading: 3.6, state: 'idle', color: 2 }, { x: 10, z: -3, heading: -0.8, state: 'idle', color: 0 },
     ];
-    for (const o of seeds) { const s = new Sheep({ ...o, state: 'idle' }); this.attach(s); s.setState(o!.state ?? 'idle'); }
+    for (const o of seeds) { const s = new Sheep({ ...o, state: 'idle' }); this.attach(s); s.setState(o!.state ?? 'idle', this); }
   }
 
   /* ---------------- SheepWorld services ---------------- */
@@ -124,7 +148,7 @@ class World implements SheepWorld {
     for (let i = 0; i < 40; i++) {
       const x = wide ? rand(-11, 11) : rand(-2.2, 6.2), z = wide ? rand(-7.4, 7.4) : rand(-3.7, 4.3);
       let free = true;
-      for (const o of OBSTACLES) if (Math.hypot(x - o.x, z - o.z) <= o.r + 0.9) { free = false; break; }
+      for (const o of this.obstacles) if (Math.hypot(x - o.x, z - o.z) <= o.r + 0.9) { free = false; break; }
       if (free) return out.set(x, 0, z);
     }
     return out.set(2, 0, 0.5);
@@ -176,9 +200,10 @@ class World implements SheepWorld {
   }
   bumpCones(s: Sheep) {
     const p = s.pos;
-    for (const c of this.cones) {
+    for (const c of this.props) {
+      if (c.kind !== 'cone' || c.dying || !c.conePivot) continue;
       const dx = c.x - p.x, dz = c.z - p.z, d = Math.hypot(dx, dz);
-      if (d < 0.5 && Math.abs(s.speed) > 0.7 && c.cd <= 0) {
+      if (d < 0.5 && Math.abs(s.speed) > 0.7 && c.cd <= 0 && d > 1e-4) {
         c.axis.set(dz / d, 0, -dx / d); c.tv += 7 + Math.abs(s.speed) * 2; c.cd = 0.8;
         Sfx.bonk(); s.sqV += 2;
         if (s.state === 'ride') this.award('Bonk', 10, c.x, 0.9, c.z, false, 'small');
@@ -260,15 +285,23 @@ class World implements SheepWorld {
       canUndo: this.history.length > 0, canRedo: this.future.length > 0,
     });
   }
-  private commit(c: Cmd) { c.do(); this.history.push(c); this.future.length = 0; this.syncUI(); }
+  private commit(c: Cmd) {
+    c.do(); this.history.push(c);
+    if (this.history.length > MAX_HISTORY) this.history.shift();
+    this.future.length = 0; this.syncUI();
+  }
   undo() { const c = this.history.pop(); if (!c) return; c.undo(); this.future.push(c); Sfx.tick(); this.syncUI(); }
   redo() { const c = this.future.pop(); if (!c) return; c.do(); this.history.push(c); Sfx.tick(); this.syncUI(); }
 
   setState(st: SheepState) {
     const s = this.selected; if (!s || s.state === st) return;
+    if (st === 'grind' && this.rails.length === 0) {
+      this.say(s, 'place a rail first!');
+      return;
+    }
     const prev: SheepState = s.state === 'goto' ? s.after : s.state === 'grind' ? 'cruise' : s.state;
     Sfx.tick();
-    this.commit({ do: () => { s.setState(st); this.onStateChanged(s); }, undo: () => { s.setState(prev); this.onStateChanged(s); } });
+    this.commit({ do: () => { s.setState(st, this); this.onStateChanged(s); }, undo: () => { s.setState(prev, this); this.onStateChanged(s); } });
     if (st === 'grind') this.say(s, 'to the rail!');
   }
   trick(type: TrickType) {
@@ -284,7 +317,18 @@ class World implements SheepWorld {
     c.spawnPop();
     this.commit({ do: () => { this.addSheep(c); Sfx.pop(); this.puff(c.pos, 6, 1.2, 1); this.select(c); }, undo: () => this.removeSheep(c) });
   }
-  remove() { const s = this.selected; if (!s) return; this.commit({ do: () => this.removeSheep(s), undo: () => { this.addSheep(s); Sfx.pop(); } }); }
+  remove() {
+    const s = this.selected; if (!s) return;
+    const wasGrinding = s.state === 'grind';
+    this.commit({
+      do: () => this.removeSheep(s),
+      undo: () => {
+        this.addSheep(s);
+        if (wasGrinding) s.setState('grind', this);
+        Sfx.pop();
+      },
+    });
+  }
   spawn() {
     const p = this.randomSpot(true, new THREE.Vector3());
     const s = new Sheep({ x: p.x, z: p.z, heading: rand(0, 6.28), state: 'idle' });
@@ -320,9 +364,10 @@ class World implements SheepWorld {
       const dx = b.pos.x - a.pos.x, dz = b.pos.z - a.pos.z, d = Math.hypot(dx, dz);
       if (d < 0.85 && d > 1e-4) { const k = (0.85 - d) / 2 / d; a.pos.x -= dx * k; a.pos.z -= dz * k; b.pos.x += dx * k; b.pos.z += dz * k; }
     }
-    for (const c of this.cones) {
-      c.cd -= dt; c.tv += (-c.tilt * 55 - c.tv * 4.5) * dt; c.tilt = clamp(c.tilt + c.tv * dt, -0.5, 1.35);
-      c.pivot.quaternion.setFromAxisAngle(c.axis, c.tilt);
+    for (const p of this.props) p.update(dt, t);
+    for (let i = this.dyingProps.length - 1; i >= 0; i--) {
+      const p = this.dyingProps[i]!; p.update(dt, t);
+      if (p.gone) { this.group.remove(p.root); this.dyingProps.splice(i, 1); }
     }
     const puffDrag = Math.exp(-3.2 * dt);
     for (const q of this.puffs) if (q.m.visible) {

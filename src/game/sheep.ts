@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { BOARD_COLORS, BOUNDS, GRAVITY, isOnPlaza, NAMES, OBSTACLES, RAIL, RAIL_Y, SHEEP_SCALE } from './config';
+import { BOARD_COLORS, BOUNDS, GRAVITY, isOnPlaza, NAMES, RAIL, RAIL_Y, SHEEP_SCALE, type Obstacle } from './config';
 import { clamp, damp, dampA, easeInBack, easeOutBack, pick, rand, rng, wrapA } from './math';
+import type { RailSegment } from './props';
 import { Sfx } from './sfx';
 import type { SheepState, TrickType } from './store';
 import { baked, radialTex, woolNormal } from './textures';
@@ -81,6 +82,8 @@ const nextName = () => {
 export interface SheepWorld {
   flock: readonly Sheep[];
   readonly selected: Sheep | null;
+  readonly obstacles: readonly Obstacle[];
+  readonly rails: readonly RailSegment[];
   keys: Readonly<Record<string, boolean>>;
   cameraForward(out: THREE.Vector3): THREE.Vector3;
   puff(p: THREE.Vector3, n: number, spread?: number, size?: number, tint?: string): void;
@@ -94,7 +97,20 @@ export interface SheepWorld {
   shake(amount: number): void;
 }
 
-type Grind = { phase: 'approach' | 'runup' | 'up' | 'slide' | 'out'; S: THREE.Vector3; E: THREE.Vector3; dir: THREE.Vector3; L: number; P: THREE.Vector3; ang: number; s: number; after: SheepState };
+type Grind = {
+  phase: 'approach' | 'runup' | 'up' | 'slide' | 'out';
+  S: THREE.Vector3;
+  E: THREE.Vector3;
+  dir: THREE.Vector3;
+  L: number;
+  P: THREE.Vector3;
+  ang: number;
+  s: number;
+  after: SheepState;
+  railId: number;
+  top: number;
+  railY: number;
+};
 type AirTrick = TrickType | 'grindpop' | 'grindout' | 'drop' | null;
 
 // scratch (no allocations in the hot loop)
@@ -183,10 +199,10 @@ export class Sheep {
   get pos() { return this.root.position; }
 
   /* ---------------- state + tricks ---------------- */
-  setState(st: SheepState) {
+  setState(st: SheepState, w?: SheepWorld) {
     if (this.state === 'grind' && st !== 'grind') this.exitGrind();
     this.state = st; this.hasTarget = false;
-    if (st === 'grind') this.startGrind();
+    if (st === 'grind' && !this.startGrind(w)) this.state = 'cruise';
   }
   /** Returns true when the trick actually started. */
   doTrick(type: TrickType): boolean {
@@ -195,7 +211,10 @@ export class Sheep {
   }
   dropIn(height = 6) { this.y = height; this.vy = 0; this.inAir = true; this.airT = 0; this.airDur = 1; this.trick = 'drop'; }
   spawnPop() { this.popT = 0; this.root.scale.setScalar(0.001); }
-  kill() { this.dying = true; this.dieT = 0; if (this.state === 'grind') this.exitGrind(); }
+  kill() {
+    this.dying = true; this.dieT = 0;
+    if (this.state === 'grind') { this.exitGrind(); this.state = 'cruise'; }
+  }
   revive() { this.dying = false; this.gone = false; this.root.visible = true; this.spawnPop(); }
 
   private launch(type: TrickType | 'grindpop') {
@@ -225,11 +244,41 @@ export class Sheep {
   }
 
   /* ---------------- grind sequence ---------------- */
-  private startGrind() {
-    const nearA = this.pos.distanceTo(RAIL.a) < this.pos.distanceTo(RAIL.b);
-    const S = (nearA ? RAIL.a : RAIL.b).clone(), E = (nearA ? RAIL.b : RAIL.a).clone();
+  private startGrind(w?: SheepWorld): boolean {
+    let rail: RailSegment | null = null;
+    if (w) {
+      if (w.rails.length === 0) return false;
+      let bestD = Infinity;
+      for (const r of w.rails) {
+        const rx = this.pos.x - r.a.x, rz = this.pos.z - r.a.z;
+        const t = clamp(rx * r.dir.x + rz * r.dir.z, 0, r.length);
+        const d = Math.hypot(this.pos.x - (r.a.x + r.dir.x * t), this.pos.z - (r.a.z + r.dir.z * t));
+        if (d < bestD) { bestD = d; rail = r; }
+      }
+    } else {
+      rail = {
+        id: 0,
+        a: RAIL.a.clone(),
+        b: RAIL.b.clone(),
+        dir: new THREE.Vector3(1, 0, 0),
+        length: RAIL.b.x - RAIL.a.x,
+        top: RAIL.top,
+        railY: RAIL_Y,
+      };
+    }
+    if (!rail) return false;
+    const nearA = this.pos.distanceTo(rail.a) < this.pos.distanceTo(rail.b);
+    const S = (nearA ? rail.a : rail.b).clone(), E = (nearA ? rail.b : rail.a).clone();
     const dir = E.clone().sub(S).normalize();
-    this.grind = { phase: 'approach', S, E, dir, L: S.distanceTo(E), P: S.clone().addScaledVector(dir, -2.8), ang: Math.atan2(dir.x, dir.z), s: -9, after: 'cruise' };
+    const P = S.clone().addScaledVector(dir, -2.8);
+    P.x = clamp(P.x, -BOUNDS.x + 0.6, BOUNDS.x - 0.6);
+    P.z = clamp(P.z, -BOUNDS.z + 0.6, BOUNDS.z - 0.6);
+    this.grind = {
+      phase: 'approach', S, E, dir, L: rail.length, P,
+      ang: Math.atan2(dir.x, dir.z), s: -9, after: 'cruise',
+      railId: rail.id, top: rail.top, railY: rail.railY,
+    };
+    return true;
   }
   exitGrind() {
     if (this.onRail) { this.onRail = false; this.inAir = true; this.vy = 1; this.airT = 0; this.trick = null; }
@@ -239,20 +288,34 @@ export class Sheep {
     const after = this.grind?.after ?? 'cruise';
     this.grind = null; this.state = after; this.hasTarget = false; w.onStateChanged(this);
   }
-  /** Ride mode: falling onto the rail while over it starts a boardslide. */
+  /** Ride mode: falling onto any rail while over it starts a boardslide. */
   private catchRail(w: SheepWorld) {
-    if (Math.abs(this.pos.z - RAIL.a.z) > 0.38 || this.pos.x < RAIL.a.x + 0.1 || this.pos.x > RAIL.b.x - 0.2) return false;
-    const fwdX = Math.sin(this.heading);
-    const goingB = Math.abs(fwdX) < 0.25 ? this.pos.x < (RAIL.a.x + RAIL.b.x) / 2 : fwdX > 0;
-    const S = (goingB ? RAIL.a : RAIL.b).clone(), E = (goingB ? RAIL.b : RAIL.a).clone(), dir = E.clone().sub(S).normalize();
-    this.grind = { phase: 'up', S, E, dir, L: S.distanceTo(E), P: S.clone(), ang: Math.atan2(dir.x, dir.z), s: (this.pos.x - S.x) * dir.x, after: 'ride' };
-    this.state = 'grind'; w.onStateChanged(this);
-    this.landRail(w); return true;
+    const fwdX = Math.sin(this.heading), fwdZ = Math.cos(this.heading);
+    for (const rail of w.rails) {
+      const relX = this.pos.x - rail.a.x, relZ = this.pos.z - rail.a.z;
+      const proj = relX * rail.dir.x + relZ * rail.dir.z;
+      const lat = Math.abs(-relX * rail.dir.z + relZ * rail.dir.x);
+      if (lat > 0.38 || proj < 0.1 || proj > rail.length - 0.15) continue;
+      const dot = fwdX * rail.dir.x + fwdZ * rail.dir.z;
+      const goingB = Math.abs(dot) < 0.25 ? proj < rail.length / 2 : dot > 0;
+      const S = (goingB ? rail.a : rail.b).clone(), E = (goingB ? rail.b : rail.a).clone();
+      const dir = E.clone().sub(S).normalize();
+      const s = (this.pos.x - S.x) * dir.x + (this.pos.z - S.z) * dir.z;
+      this.grind = {
+        phase: 'up', S, E, dir, L: rail.length, P: S.clone(),
+        ang: Math.atan2(dir.x, dir.z), s, after: 'ride',
+        railId: rail.id, top: rail.top, railY: rail.railY,
+      };
+      this.state = 'grind'; w.onStateChanged(this);
+      this.landRail(w);
+      return true;
+    }
+    return false;
   }
   private landRail(w: SheepWorld) {
-    const g = this.grind!; this.onRail = true; this.inAir = false; this.vy = 0; this.y = RAIL_Y; this.trick = null; this.flip = 0; this.spin = 0;
+    const g = this.grind!; this.onRail = true; this.inAir = false; this.vy = 0; this.y = g.railY; this.trick = null; this.flip = 0; this.spin = 0;
     g.phase = 'slide'; this.slideYawT = Math.PI / 2; this.sqV -= 5; this.speed = Math.max(this.speed, 2.6);
-    for (let i = 0; i < 10; i++) w.spark(this.pos.x, RAIL.top + 0.02, this.pos.z, g.dir.x, g.dir.z);
+    for (let i = 0; i < 10; i++) w.spark(this.pos.x, g.top + 0.02, this.pos.z, g.dir.x, g.dir.z);
     Sfx.clank(); Sfx.startHiss();
   }
   /** Returns a seek target, or null when the grind drives movement itself. */
@@ -267,7 +330,7 @@ export class Sheep {
       this.speed = damp(this.speed, 2.9, 2, dt);
       p.x = g.S.x + g.dir.x * g.s; p.z = g.S.z + g.dir.z * g.s;
       this.heading = g.ang;
-      if (Math.random() < dt * 170) w.spark(p.x, RAIL.top + 0.02, p.z, g.dir.x, g.dir.z);
+      if (Math.random() < dt * 170) w.spark(p.x, g.top + 0.02, p.z, g.dir.x, g.dir.z);
       if (g.s >= g.L - 0.05) {
         this.onRail = false; this.slideYawT = 0; Sfx.stopHiss();
         this.vy = 4.2; this.inAir = true; this.airT = 0; this.airDur = 0.5; this.trick = 'grindout'; g.phase = 'out'; this.sqV += 5;
@@ -288,7 +351,7 @@ export class Sheep {
   /* ---------------- per-frame simulation ---------------- */
   private avoid(ignoreRail: boolean, w: SheepWorld, out: THREE.Vector3) {
     out.set(0, 0, 0); const p = this.pos;
-    for (const o of OBSTACLES) {
+    for (const o of w.obstacles) {
       if (ignoreRail && o.tag === 'rail') continue;
       const dx = p.x - o.x, dz = p.z - o.z, d = Math.hypot(dx, dz), R = o.r + 1.1;
       if (d < R && d > 1e-4) { const k = (R - d) / R * 2.4; out.x += dx / d * k; out.z += dz / d * k; }
@@ -344,7 +407,7 @@ export class Sheep {
 
     // collisions
     if (!this.onRail) {
-      for (const o of OBSTACLES) {
+      for (const o of w.obstacles) {
         if (o.h >= 0 && this.y > o.h) continue;
         if (o.tag === 'rail' && this.state === 'grind') continue;
         const dx = p.x - o.x, dz = p.z - o.z, d = Math.hypot(dx, dz), R = o.r + 0.38;
@@ -371,11 +434,12 @@ export class Sheep {
         this.spin = (1 - (1 - sk) ** 3) * Math.PI * 2;
       }
       this.pitch = -0.5 * Math.sin(clamp(this.airT / 0.36, 0, 1) * Math.PI);
-      const g = this.grind, crossing = this.vy < 0 && this.y <= RAIL_Y && yPrev >= RAIL_Y - 0.06;
+      const g = this.grind, targetY = g ? g.railY : RAIL_Y;
+      const crossing = this.vy < 0 && this.y <= targetY && yPrev >= targetY - 0.06;
       if (this.state === 'grind' && g && g.phase === 'up' && crossing && g.s > -0.45 && g.s < g.L - 0.4) this.landRail(w);
       else if (this.state === 'ride' && crossing && this.catchRail(w)) { /* now sliding */ }
       else if (this.y <= 0 && this.vy < 0) this.land(w, Math.abs(this.vy));
-    } else if (this.onRail) this.y = RAIL_Y;
+    } else if (this.onRail) this.y = this.grind ? this.grind.railY : RAIL_Y;
 
     if (!this.inAir) w.bumpCones(this);
     this.animate(dt, t, prevH);
