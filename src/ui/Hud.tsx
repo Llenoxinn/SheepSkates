@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Sfx } from '../game/sfx';
 import { useUI, type SheepState, type TrickType } from '../game/store';
 import { overlay, world } from '../game/world';
+import { SeasonDial } from './SeasonDial';
 
 const Icon = {
   undo: <path d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />,
@@ -104,12 +105,15 @@ export function Hud() {
           <div><h1>Sheep Skate</h1><small>Pastoral skatepark editor</small></div>
           <Score />
         </div>
-        <div className="actions">
-          <button className="chipbtn" title="Drop a new sheep (N)" onClick={() => { Sfx.unlock(); world.spawn(); }}><Svg>{Icon.plus}</Svg>Sheep</button>
-          <button className="chipbtn icon" title="Sound (M)" aria-label={sound ? 'Mute sound' : 'Unmute sound'} aria-pressed={!sound}
-            onClick={() => { Sfx.unlock(); useUI.setState({ sound: Sfx.toggle() }); }}>
-            <Svg>{sound ? Icon.sound : Icon.mute}</Svg>
-          </button>
+        <div className="hud-right">
+          <SeasonDial />
+          <div className="actions">
+            <button className="chipbtn" title="Drop a new sheep (N)" onClick={() => { Sfx.unlock(); world.spawn(); }}><Svg>{Icon.plus}</Svg>Sheep</button>
+            <button className="chipbtn icon" title="Sound (M)" aria-label={sound ? 'Mute sound' : 'Unmute sound'} aria-pressed={!sound}
+              onClick={() => { Sfx.unlock(); useUI.setState({ sound: Sfx.toggle() }); }}>
+              <Svg>{sound ? Icon.sound : Icon.mute}</Svg>
+            </button>
+          </div>
         </div>
       </div>
 

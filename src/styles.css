@@ -32,12 +32,50 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .score span { font: 500 11px Inter; color: var(--muted); }
 .score .combo { font: 700 12px Fredoka; color: #fff; background: #ff7a59; border-radius: 99px; padding: 2px 7px; transform: scale(0); transition: transform 0.3s var(--spring); }
 .score .combo.on { transform: scale(1); }
+.hud-right { pointer-events: none; display: flex; align-items: flex-start; gap: 10px; }
 .actions { pointer-events: auto; display: flex; gap: 8px; }
-.chipbtn { height: 40px; min-width: 40px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--panel-line); background: var(--panel); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: var(--shadow); font: 600 13px Inter; color: var(--ink); display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: transform 0.18s var(--out), background-color 0.18s; }
-.chipbtn:hover { background: #fff; }
-.chipbtn:active { transform: scale(0.94); }
+.chipbtn { height: 40px; min-width: 40px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--panel-line); background: var(--panel); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: var(--shadow); font: 600 13px Inter; color: var(--ink); display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: transform 0.15s var(--out), background-color 0.15s; }
+@media (hover: hover) and (pointer: fine) { .chipbtn:hover { background: #fff; } }
+.chipbtn:not(:disabled):active { transform: scale(0.96); }
 .chipbtn svg { width: 16px; height: 16px; }
 .chipbtn.icon { padding: 0; }
+
+/* ---------- season dial & weather ---------- */
+.season-card { pointer-events: auto; display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 6px; border-radius: 18px; background: var(--panel); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid var(--panel-line); box-shadow: var(--shadow); }
+.dial { position: relative; width: 60px; height: 60px; flex-shrink: 0; border-radius: 999px; background: #f8f4ec; box-shadow: 0 1px 2px rgba(60, 40, 20, 0.08) inset; cursor: grab; touch-action: none; }
+.season-card.dragging .dial { cursor: grabbing; }
+.dial-face { width: 60px; height: 60px; display: block; pointer-events: none; }
+.dial-ring { fill: none; stroke: rgba(60, 45, 30, 0.1); stroke-width: 1; }
+.dial-inner { fill: rgba(255, 255, 255, 0.55); stroke: rgba(60, 45, 30, 0.07); stroke-width: 1; }
+.dial-needle-wrap { position: absolute; inset: 0; pointer-events: none; display: flex; justify-content: center; transform-origin: 50% 50%; }
+.dial-needle { width: 3px; height: 7px; margin-top: 15px; border-radius: 99px; transition: background-color 0.2s; }
+.dial-q { position: absolute; width: 20px; height: 20px; border: 0; background: transparent; padding: 0; border-radius: 999px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.dial-q-spring { left: 20px; top: 1px; }
+.dial-q-summer { right: 1px; top: 20px; }
+.dial-q-autumn { left: 20px; bottom: 1px; }
+.dial-q-winter { left: 1px; top: 20px; }
+.dial-hub { position: absolute; left: 20px; top: 20px; width: 20px; height: 20px; border-radius: 999px; border: 1px solid var(--panel-line); background: #fff; color: var(--muted); display: grid; place-items: center; padding: 0; cursor: pointer; box-shadow: 0 1px 3px rgba(60, 40, 20, 0.12); transition: transform 0.15s var(--out), color 0.15s, background-color 0.15s; -webkit-tap-highlight-color: transparent; }
+.dial-hub svg { width: 10px; height: 10px; }
+.dial-hub.on { color: var(--ink); background: var(--pill); }
+.dial-hub:not(:disabled):active { transform: scale(0.96); }
+.season-meta { display: flex; flex-direction: column; gap: 5px; }
+.season-top { display: flex; align-items: center; gap: 6px; padding-left: 2px; }
+.season-name { font: 600 13.5px/1 Fredoka, sans-serif; letter-spacing: 0.1px; min-width: 50px; }
+.auto-pill { height: 20px; padding: 0 7px; border-radius: 99px; border: 1px solid var(--panel-line); background: transparent; color: var(--muted); font: 600 10.5px/1 Inter, sans-serif; cursor: pointer; transition: transform 0.15s var(--out), background-color 0.15s, color 0.15s; -webkit-tap-highlight-color: transparent; }
+.auto-pill.on { background: var(--pill); color: var(--ink); }
+.auto-pill:not(:disabled):active { transform: scale(0.96); }
+.fx-badge { height: 20px; padding: 0 7px; border-radius: 99px; font: 600 10.5px/20px Inter, sans-serif; white-space: nowrap; }
+.fx-badge.ice { background: #e1f1fd; color: #1b65a6; }
+.fx-badge.rain { background: #e2e8f0; color: #334155; }
+.weather-seg { display: flex; align-items: center; gap: 2px; padding: 2px; border-radius: 10px; background: rgba(60, 45, 30, 0.05); }
+.weather-seg button { height: 26px; border: 0; border-radius: 8px; padding: 0 7px; background: transparent; color: var(--muted); font: 500 11.5px/1 Inter, sans-serif; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; transition: transform 0.15s var(--out), background-color 0.15s, color 0.15s, box-shadow 0.15s; -webkit-tap-highlight-color: transparent; }
+.weather-seg button svg { width: 13px; height: 13px; flex-shrink: 0; }
+.weather-seg button.active { background: #fff; color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(60, 40, 20, 0.12); }
+.weather-seg button:not(:disabled):active { transform: scale(0.96); }
+@media (hover: hover) and (pointer: fine) {
+  .weather-seg button:not(.active):hover { color: var(--ink); background: rgba(255, 255, 255, 0.55); }
+  .dial-hub:hover, .auto-pill:hover { color: var(--ink); }
+}
 
 /* ---------- selection overlay ---------- */
 #sel { position: fixed; left: 0; top: 0; border: 1.5px solid var(--accent); border-radius: 2px; pointer-events: none; opacity: 0; transition: opacity 0.18s; }
@@ -94,6 +132,11 @@ kbd { font: 600 10.5px Inter; color: var(--ink); background: #fff; border: 1px s
 .loader.done { opacity: 0; }
 
 @media (max-width: 720px) {
+  .hud { flex-wrap: wrap; gap: 8px; }
+  .hud-right { width: 100%; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  .season-card { max-width: 100%; }
+  .weather-seg button span { display: none; }
+  .weather-seg button { padding: 0 8px; }
   .hint { font-size: 11px; max-width: calc(100% - 32px); overflow: hidden; }
   .hint .opt, .brand small { display: none; }
 }
