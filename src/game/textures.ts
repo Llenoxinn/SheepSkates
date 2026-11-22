@@ -243,6 +243,13 @@ export function radialTex(inner: string, outer: string, size = 128) {
   return new THREE.CanvasTexture(c);
 }
 
+/** Memoize expensive procedural bakes outside React so Suspense retries never repaint. */
+const bakeCache = new Map<string, unknown>();
+export function baked<T>(key: string, make: () => T): T {
+  if (!bakeCache.has(key)) bakeCache.set(key, make());
+  return bakeCache.get(key) as T;
+}
+
 /** Configure a loaded PBR set: color maps sRGB, data maps linear, tiled with anisotropy. */
 export function setupPbr(maps: { map: THREE.Texture; normalMap: THREE.Texture; roughnessMap: THREE.Texture }, repeat: number, aniso: number) {
   maps.map.colorSpace = THREE.SRGBColorSpace;
