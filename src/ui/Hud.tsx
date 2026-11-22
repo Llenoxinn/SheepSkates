@@ -1,46 +1,54 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useAppPhase } from '../game/appPhase';
+import type { PropKind } from '../game/props';
 import { Sfx } from '../game/sfx';
 import { useUI, type SheepState, type TrickType } from '../game/store';
 import { overlay, world } from '../game/world';
+import { ArtIcon, type ArtIconName } from './ArtIcons';
+import { BrandLogo } from './BrandLogo';
 
-const Icon = {
-  undo: <path d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />,
-  redo: <path d="m15 14 5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />,
-  copy: <><rect width="13" height="13" x="8" y="8" rx="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></>,
-  trash: <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2" />,
-  plus: <path d="M5 12h14M12 5v14" />,
-  sound: <><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z" /><path d="M16 9a5 5 0 0 1 0 6M19.4 18.4a9 9 0 0 0 0-12.8" /></>,
-  mute: <><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z" /><path d="m22 9-6 6M16 9l6 6" /></>,
-};
-const Svg = ({ children }: { children: React.ReactNode }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>{children}</svg>
-);
-
-const STATES: { id: SheepState; label: string; tip: string }[] = [
-  { id: 'idle', label: 'Idle', tip: 'Idle · 1' },
-  { id: 'cruise', label: 'Cruise', tip: 'Cruise · 2' },
-  { id: 'grind', label: 'Grind', tip: 'Grind the rail · 3' },
-];
-const TRICKS: { id: TrickType; label: string; tip: string }[] = [
-  { id: 'ollie', label: 'Ollie', tip: 'Space' },
-  { id: 'kickflip', label: 'Kickflip', tip: 'F' },
-  { id: 'spin', label: '360', tip: 'E · or double-click' },
+const PALETTE_PIECES: { kind: PropKind; label: string; icon: ArtIconName }[] = [
+  { kind: 'ramp', label: 'Ramp', icon: 'ramp' },
+  { kind: 'rail', label: 'Rail', icon: 'rail' },
+  { kind: 'ledge', label: 'Ledge', icon: 'ledge' },
+  { kind: 'cone', label: 'Cone', icon: 'cone' },
+  { kind: 'bench', label: 'Bench', icon: 'bench' },
+  { kind: 'tree', label: 'Tree', icon: 'tree' },
 ];
 
-function Toolbar() {
+const STATES: { id: SheepState; label: string; tip: string; icon: ArtIconName }[] = [
+  { id: 'idle', label: 'Idle', tip: 'Idle · 1', icon: 'idle' },
+  { id: 'cruise', label: 'Cruise', tip: 'Cruise · 2', icon: 'cruise' },
+  { id: 'grind', label: 'Grind', tip: 'Grind the rail · 3', icon: 'grind' },
+];
+
+const TRICKS: { id: TrickType; label: string; tip: string; icon: ArtIconName }[] = [
+  { id: 'ollie', label: 'Ollie', tip: 'Space', icon: 'ollie' },
+  { id: 'kickflip', label: 'Kickflip', tip: 'F', icon: 'kickflip' },
+  { id: 'spin', label: '360', tip: 'E · or double-click', icon: 'spin' },
+];
+
+function Toolbar({ live }: { live: boolean }) {
   const selected = useUI(s => s.selected);
+  const sheepSel = selected?.kind === 'sheep' ? selected : null;
+  const propSel = selected?.kind === 'prop' ? selected : null;
+  const moveMode = useUI(s => s.moveMode);
   const canUndo = useUI(s => s.canUndo), canRedo = useUI(s => s.canRedo);
   const fired = useUI(s => s.firedTrick);
   const segRef = useRef<HTMLDivElement>(null);
   const [pill, setPill] = useState({ x: 0, w: 0, on: false });
 
-  // slide the pill under the active state button
   useLayoutEffect(() => {
-    const btn = segRef.current?.querySelector<HTMLButtonElement>(`[data-state="${selected?.state}"]`);
-    setPill(btn ? { x: btn.offsetLeft, w: btn.offsetWidth, on: true } : p => ({ ...p, on: false }));
-  }, [selected?.state, selected?.id]);
+    const sync = () => {
+      const btn = segRef.current?.querySelector<HTMLButtonElement>(`[data-state="${sheepSel?.state}"]`);
+      setPill(btn ? { x: btn.offsetLeft, w: btn.offsetWidth, on: true } : p => ({ ...p, on: false }));
+    };
+    sync();
+    let cancelled = false;
+    document.fonts?.ready?.then(() => { if (!cancelled) sync(); });
+    return () => { cancelled = true; };
+  }, [sheepSel?.state, sheepSel?.id, live]);
 
-  // replay the "fire" flash on the trick button that was triggered (keyboard or click)
   useEffect(() => {
     if (!fired) return;
     const b = document.querySelector<HTMLButtonElement>(`#bar [data-trick="${fired.type}"]`);
@@ -50,26 +58,89 @@ function Toolbar() {
 
   return (
     <div
-      id="bar" role="toolbar" aria-label="Sheep actions" className={selected ? 'on' : ''}
+      id="bar" role="toolbar" aria-label={propSel ? 'Piece actions' : 'Sheep actions'} className={live && selected ? 'on' : ''}
       ref={el => { overlay.bar = el; }}
       onPointerEnter={() => { overlay.barHover = true; }} onPointerLeave={() => { overlay.barHover = false; }}
       onPointerDown={() => Sfx.unlock()}
     >
-      <div className="seg" ref={segRef}>
-        <span className="pill" style={{ width: pill.w, transform: `translateX(${pill.x}px)`, opacity: pill.on ? 1 : 0 }} />
-        {STATES.map(s => (
-          <button key={s.id} data-state={s.id} data-tip={s.tip} className={selected?.state === s.id ? 'active' : ''} onClick={() => world.setState(s.id)}>{s.label}</button>
-        ))}
-      </div>
-      {selected?.state === 'ride' && <span className="riding"><i />Riding</span>}
+      {propSel ? (
+        <>
+          <button
+            className={`ic-txt ${moveMode ? 'active' : ''}`}
+            data-tip="Move · G or drag"
+            aria-pressed={moveMode}
+            onClick={() => world.toggleMoveMode()}
+          >
+            <ArtIcon name="move" size={16} className="btn-ic" />
+            <span>Move</span>
+          </button>
+          <button className="ic" data-tip="Rotate -45° · Q" aria-label="Rotate left 45 degrees" onClick={() => world.rotateProp(-Math.PI / 4)}>
+            <ArtIcon name="rotL" size={17} />
+          </button>
+          <button className="ic" data-tip="Rotate +45° · R" aria-label="Rotate right 45 degrees" onClick={() => world.rotateProp(Math.PI / 4)}>
+            <ArtIcon name="rotR" size={17} />
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="seg" ref={segRef}>
+            <span className="pill" style={{ width: pill.w, transform: `translateX(${pill.x}px)`, opacity: pill.on ? 1 : 0 }} />
+            {STATES.map(s => (
+              <button key={s.id} data-state={s.id} data-tip={s.tip} className={sheepSel?.state === s.id ? 'active' : ''} onClick={() => world.setState(s.id)}>
+                <ArtIcon name={s.icon} size={15} className="btn-ic" />
+                <span>{s.label}</span>
+              </button>
+            ))}
+          </div>
+          {sheepSel?.state === 'ride' && <span className="riding"><i />Riding</span>}
+          <span className="sep" />
+          {TRICKS.map(t => (
+            <button key={t.id} data-trick={t.id} data-tip={t.tip} onClick={() => world.trick(t.id)}>
+              <ArtIcon name={t.icon} size={15} className="btn-ic" />
+              <span>{t.label}</span>
+            </button>
+          ))}
+        </>
+      )}
       <span className="sep" />
-      {TRICKS.map(t => <button key={t.id} data-trick={t.id} data-tip={t.tip} onClick={() => world.trick(t.id)}>{t.label}</button>)}
+      <button className="ic" data-tip="Undo · Ctrl Z" aria-label="Undo" disabled={!canUndo} onClick={() => world.undo()}><ArtIcon name="undo" size={17} /></button>
+      <button className="ic" data-tip="Redo · Ctrl Shift Z" aria-label="Redo" disabled={!canRedo} onClick={() => world.redo()}><ArtIcon name="redo" size={17} /></button>
       <span className="sep" />
-      <button className="ic" data-tip="Undo · Ctrl Z" aria-label="Undo" disabled={!canUndo} onClick={() => world.undo()}><Svg>{Icon.undo}</Svg></button>
-      <button className="ic" data-tip="Redo · Ctrl Shift Z" aria-label="Redo" disabled={!canRedo} onClick={() => world.redo()}><Svg>{Icon.redo}</Svg></button>
-      <span className="sep" />
-      <button className="ic" data-tip="Duplicate · Ctrl D" aria-label="Duplicate" onClick={() => world.duplicate()}><Svg>{Icon.copy}</Svg></button>
-      <button className="ic del" data-tip="Delete · Del" aria-label="Delete" onClick={() => world.remove()}><Svg>{Icon.trash}</Svg></button>
+      <button className="ic" data-tip="Duplicate · Ctrl D" aria-label="Duplicate" onClick={() => world.duplicate()}><ArtIcon name="duplicate" size={17} /></button>
+      <button className="ic del" data-tip="Delete · Del" aria-label="Delete" onClick={() => world.remove()}><ArtIcon name="delete" size={17} /></button>
+    </div>
+  );
+}
+
+function BuildPalette({ live }: { live: boolean }) {
+  const buildMode = useUI(s => s.buildMode);
+  const draggingPalette = useUI(s => s.draggingPalette);
+  const canUndo = useUI(s => s.canUndo), canRedo = useUI(s => s.canRedo);
+  const open = live && buildMode;
+  return (
+    <div className={`palette ${open ? 'on' : ''}`} role="toolbar" aria-label="Park piece palette" aria-hidden={!open}>
+      {PALETTE_PIECES.map(p => (
+        <button
+          key={p.kind}
+          className={`palette-item ${draggingPalette === p.kind ? 'dragging' : ''}`}
+          title={`Drag onto island or click to place ${p.label}`}
+          aria-label={`Place ${p.label}`}
+          tabIndex={open ? 0 : -1}
+          onPointerDown={e => {
+            if (e.button !== 0 || !open) return;
+            e.preventDefault();
+            Sfx.unlock();
+            world.beginPaletteDrag(p.kind);
+          }}
+        >
+          <ArtIcon name={p.icon} size={21} />
+          <span>{p.label}</span>
+        </button>
+      ))}
+      <span className="psep" />
+      <button className="palette-act" title="Undo (Ctrl Z)" aria-label="Undo" disabled={!canUndo} tabIndex={open ? 0 : -1} onClick={() => world.undo()}><ArtIcon name="undo" size={16} /></button>
+      <button className="palette-act" title="Redo (Ctrl Shift Z)" aria-label="Redo" disabled={!canRedo} tabIndex={open ? 0 : -1} onClick={() => world.redo()}><ArtIcon name="redo" size={16} /></button>
+      <button className="palette-act" title="Reset to default park" aria-label="Reset park" tabIndex={open ? 0 : -1} onClick={() => world.resetPark()}><ArtIcon name="reset" size={16} /></button>
     </div>
   );
 }
@@ -92,37 +163,98 @@ function Score() {
 }
 
 export function Hud() {
+  const phase = useAppPhase(s => s.phase);
+  const howToPlayOpen = useAppPhase(s => s.howToPlayOpen);
   const selected = useUI(s => s.selected);
+  const buildMode = useUI(s => s.buildMode);
+  const toast = useUI(s => s.toast);
   const sound = useUI(s => s.sound);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const live = phase === 'playing';
+
   return (
     <>
-      <div className="hud">
+      <div className={`hud ${live ? 'hud-live' : 'hud-hidden'}`} aria-hidden={!live}>
         <div className="brand">
           <div className="logo" aria-hidden>
-            <svg width="20" height="20" viewBox="0 0 24 24"><circle cx="9" cy="11" r="4.2" fill="#f4efe6" stroke="#2b2622" strokeWidth="1.4" /><circle cx="14" cy="10" r="4.6" fill="#f4efe6" stroke="#2b2622" strokeWidth="1.4" /><ellipse cx="17.6" cy="11.6" rx="2.2" ry="2.6" fill="#3b302c" /><rect x="4" y="16.2" width="16" height="2" rx="1" fill="#ff8fa3" /><circle cx="7" cy="19.6" r="1.2" fill="#2b2622" /><circle cx="17" cy="19.6" r="1.2" fill="#2b2622" /></svg>
+            <BrandLogo variant="badge" size={34} />
           </div>
           <div><h1>Sheep Skate</h1><small>Pastoral skatepark editor</small></div>
           <Score />
         </div>
         <div className="actions">
-          <button className="chipbtn" title="Drop a new sheep (N)" onClick={() => { Sfx.unlock(); world.spawn(); }}><Svg>{Icon.plus}</Svg>Sheep</button>
-          <button className="chipbtn icon" title="Sound (M)" aria-label={sound ? 'Mute sound' : 'Unmute sound'} aria-pressed={!sound}
-            onClick={() => { Sfx.unlock(); useUI.setState({ sound: Sfx.toggle() }); }}>
-            <Svg>{sound ? Icon.sound : Icon.mute}</Svg>
+          <button
+            className={`chipbtn ${buildMode ? 'active' : ''}`}
+            title="Build park (B)"
+            aria-pressed={buildMode}
+            tabIndex={live ? 0 : -1}
+            onClick={() => { Sfx.unlock(); world.toggleBuildMode(); }}
+          >
+            <ArtIcon name="build" size={18} /><span className="lbl">Build</span>
+          </button>
+          <button className="chipbtn" title="Drop a new sheep (N)" tabIndex={live ? 0 : -1} onClick={() => { Sfx.unlock(); world.spawn(); }}>
+            <ArtIcon name="dropSheep" size={18} /><span className="lbl">Sheep</span>
+          </button>
+          <button className="chipbtn icon" title="Save park (.json)" aria-label="Save park file" tabIndex={live ? 0 : -1} onClick={() => { Sfx.unlock(); world.exportPark(); }}>
+            <ArtIcon name="save" size={18} />
+          </button>
+          <button className="chipbtn icon" title="Load park (.json)" aria-label="Load park file" tabIndex={live ? 0 : -1} onClick={() => { Sfx.unlock(); fileRef.current?.click(); }}>
+            <ArtIcon name="load" size={18} />
+          </button>
+          <button className="chipbtn icon" title="Copy share link" aria-label="Share park link" tabIndex={live ? 0 : -1} onClick={() => { Sfx.unlock(); void world.shareParkLink(); }}>
+            <ArtIcon name="share" size={18} />
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".json,application/json"
+            style={{ display: 'none' }}
+            onChange={e => {
+              const f = e.target.files?.[0];
+              e.target.value = '';
+              if (f) void world.importPark(f);
+            }}
+          />
+          <button
+            className="chipbtn icon"
+            title="How to play (?)"
+            aria-label="How to play"
+            aria-expanded={howToPlayOpen}
+            tabIndex={live ? 0 : -1}
+            onClick={() => { Sfx.unlock(); Sfx.tick(); useAppPhase.getState().toggleHowToPlay(); }}
+          >
+            <ArtIcon name="howToPlay" size={18} />
+          </button>
+          <button
+            className="chipbtn icon"
+            title="Sound (M)"
+            aria-label={sound ? 'Mute sound' : 'Unmute sound'}
+            aria-pressed={!sound}
+            tabIndex={live ? 0 : -1}
+            onClick={() => { Sfx.unlock(); useUI.setState({ sound: Sfx.toggle() }); }}
+          >
+            <ArtIcon name={sound ? 'soundOn' : 'soundOff'} size={18} />
           </button>
         </div>
       </div>
 
-      <div id="sel" ref={el => { overlay.sel = el; }}><i className="tl" /><i className="tr" /><i className="bl" /><i className="br" /></div>
-      <div id="tag" className={selected ? 'on' : ''} ref={el => { overlay.tag = el; }} />
-      <Toolbar />
-      <div className="layer" ref={el => { overlay.layer = el; }} />
+      {live && toast && <div className="toast" role="status" aria-live="polite">{toast}</div>}
 
-      <div className="hint">
-        {selected ? (
+      <div id="sel" ref={el => { overlay.sel = el; }}><i className="tl" /><i className="tr" /><i className="bl" /><i className="br" /></div>
+      <div id="tag" className={live && selected ? 'on' : ''} ref={el => { overlay.tag = el; }} />
+      <Toolbar live={live} />
+      <div className="layer" ref={el => { overlay.layer = el; }} />
+      <BuildPalette live={live} />
+
+      <div className={`hint ${live ? 'hud-live' : 'hud-hidden'}`} aria-hidden={!live}>
+        {selected?.kind === 'prop' ? (
+          <span className="swap" key="prop"><span>Drag piece to move</span><span><kbd>Q</kbd><kbd>R</kbd> rotate</span><span className="opt"><kbd>Ctrl</kbd><kbd>D</kbd> duplicate</span><span className="opt"><kbd>Del</kbd> delete</span><span className="opt"><kbd>Esc</kbd> deselect</span></span>
+        ) : selected?.kind === 'sheep' ? (
           <span className="swap" key="b"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> ride</span><span><kbd>Space</kbd> ollie</span><span className="opt"><kbd>F</kbd> kickflip</span><span className="opt"><kbd>E</kbd> 360</span><span>Click grass to send</span><span className="opt"><kbd>Esc</kbd> deselect</span></span>
+        ) : buildMode ? (
+          <span className="swap" key="build"><span>Drag pieces onto the island</span><span className="opt">Click any piece to edit</span><span className="opt"><kbd>Ctrl</kbd><kbd>Z</kbd> undo</span><span><kbd>B</kbd> close build</span></span>
         ) : (
-          <span className="swap" key="a"><span>Click a sheep to edit it</span><span className="opt">Drag to orbit</span><span className="opt">Scroll to zoom</span><span><kbd>N</kbd> new sheep</span></span>
+          <span className="swap" key="a"><span>Click a sheep or piece to edit</span><span className="opt">Drag to orbit</span><span><kbd>B</kbd> build park</span><span><kbd>N</kbd> new sheep</span></span>
         )}
       </div>
     </>

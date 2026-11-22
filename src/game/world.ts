@@ -1,10 +1,15 @@
 import * as THREE from 'three';
-import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { BOARD_COLORS, CONES, isOnPlaza, OBSTACLES, PLAZA_TOP } from './config';
-import { clamp, damp, pick, rand } from './math';
+import { useAppPhase } from './appPhase';
+import { BOARD_COLORS, BOUNDS, BUSHES, isOnPlaza, PLAZA_TOP, POND, type Obstacle } from './config';
+import { clamp, damp, pick, rand, wrapA } from './math';
+import {
+  buildShareUrl, clearParkStorage, downloadParkJson, readParkJsonFile, saveParkToStorage,
+  type ParkData, type SerializedSheep,
+} from './parkSerializer';
+import { DEFAULT_PARK_PROPS, ParkProp, type PropDef, type PropKind, type RailSegment } from './props';
 import { Sfx } from './sfx';
 import { Sheep, type SheepWorld } from './sheep';
-import { useUI, type SheepState, type TrickType } from './store';
+import { useUI, type SelectedEntity, type SheepState, type TrickType } from './store';
 
 /* ------------------------------------------------------------------ */
 /* DOM overlay handles (registered by the React HUD)                    */
@@ -13,8 +18,8 @@ export const overlay: { sel: HTMLElement | null; tag: HTMLElement | null; bar: H
   sel: null, tag: null, bar: null, layer: null, barHover: false,
 };
 
+const MAX_HISTORY = 100;
 type Cmd = { do: () => void; undo: () => void };
-type Cone = { pivot: THREE.Group; x: number; z: number; tilt: number; tv: number; axis: THREE.Vector3; cd: number };
 type Puff = { m: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>; v: THREE.Vector3; life: number; max: number; size: number; rotV: number };
 type Spark = { m: THREE.Mesh; v: THREE.Vector3; life: number; max: number };
 type SpeedLine = { m: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>; v: THREE.Vector3; life: number; max: number; len: number };
@@ -33,13 +38,23 @@ class World implements SheepWorld {
   readonly group = new THREE.Group();
   flock: Sheep[] = [];
   private dying: Sheep[] = [];
+  props: ParkProp[] = [];
+  private dyingProps: ParkProp[] = [];
+  readonly obstacles: Obstacle[] = [];
+  readonly rails: RailSegment[] = [];
   readonly hitTargets: THREE.Object3D[] = [];
+  readonly propHitTargets: THREE.Object3D[] = [];
   keys: Record<string, boolean> = {};
   camera: THREE.Camera | null = null;
   selected: Sheep | null = null;
   hovered: Sheep | null = null;
+  selectedProp: ParkProp | null = null;
+  hoveredProp: ParkProp | null = null;
+  moveMode = false;
+  setOrbitEnabled: ((on: boolean) => void) | null = null;
+  private previewProp: ParkProp | null = null;
+  private toastTimer: ReturnType<typeof setTimeout> | null = null;
 
-  private cones: Cone[] = [];
   private puffs: Puff[] = []; private puffI = 0;
   private sparks: Spark[] = []; private sparkI = 0;
   private speedLines: SpeedLine[] = []; private speedLineI = 0;
@@ -60,25 +75,45 @@ class World implements SheepWorld {
     };
     this.hoverRing = ring(0.62, 0.7, '#ffffff');
     this.selRing = ring(0.64, 0.72, '#3b82f6');
-    this.buildCones();
     this.buildParticles();
+    this.seedProps();
     this.seedFlock();
   }
 
   /* ---------------- construction ---------------- */
-  private buildCones() {
-    const mat = new THREE.MeshStandardMaterial({ color: '#ff9a4d', roughness: 0.55 });
-    const white = new THREE.MeshStandardMaterial({ color: '#fff7ea', roughness: 0.55 });
-    const base = new RoundedBoxGeometry(0.34, 0.04, 0.34, 2, 0.015), body = new THREE.ConeGeometry(0.14, 0.42, 24), band = new THREE.CylinderGeometry(0.087, 0.1, 0.07, 24);
-    for (const [x, z] of CONES) {
-      const g = new THREE.Group(); g.position.set(x, PLAZA_TOP, z);
-      const pivot = new THREE.Group(); g.add(pivot);
-      const b = new THREE.Mesh(base, mat); b.position.y = 0.02; pivot.add(b);
-      const c = new THREE.Mesh(body, mat); c.position.y = 0.25; pivot.add(c);
-      const w = new THREE.Mesh(band, white); w.position.y = 0.25; pivot.add(w);
-      g.traverse(n => { if ((n as THREE.Mesh).isMesh) { n.castShadow = true; n.receiveShadow = true; } });
-      this.group.add(g);
-      this.cones.push({ pivot, x, z, tilt: 0, tv: 0, axis: new THREE.Vector3(1, 0, 0), cd: 0 });
+  private seedProps() {
+    for (const def of DEFAULT_PARK_PROPS) {
+      const p = new ParkProp(def);
+      this.props.push(p);
+      this.group.add(p.root);
+      this.propHitTargets.push(p.hit);
+    }
+    this.rebuildRegistry();
+  }
+  rebuildRegistry() {
+    this.obstacles.length = 0;
+    this.rails.length = 0;
+    this.obstacles.push(
+      { x: POND.x - 1.0, z: POND.z, r: 1.7, h: -1 },
+      { x: POND.x + 1.0, z: POND.z, r: 1.7, h: -1 },
+    );
+    for (const [bx, bz] of BUSHES) this.obstacles.push({ x: bx, z: bz, r: 0.55, h: 0.6 });
+    for (const p of this.props) {
+      if (p.dying) continue;
+      p.getObstacles(this.obstacles);
+      if (p.kind === 'rail') {
+        const seg = p.getRailSegment();
+        if (seg) this.rails.push(seg);
+      }
+    }
+  }
+  cancelGrindsOnRail(railId: number) {
+    for (const s of this.flock) {
+      if (s.state === 'grind' && s.grind && s.grind.railId === railId) {
+        const after = s.grind.after === 'ride' ? 'ride' : 'cruise';
+        s.setState(after, this);
+        this.onStateChanged(s);
+      }
     }
   }
   private buildParticles() {
@@ -112,10 +147,11 @@ class World implements SheepWorld {
       { x: -8, z: -2.4, heading: 1.2, state: 'idle', color: 5 }, { x: -6.6, z: 5.6, heading: -2.4, state: 'idle', color: 6 },
       { x: 9.6, z: 5.0, heading: 3.6, state: 'idle', color: 2 }, { x: 10, z: -3, heading: -0.8, state: 'idle', color: 0 },
     ];
-    for (const o of seeds) { const s = new Sheep({ ...o, state: 'idle' }); this.attach(s); s.setState(o!.state ?? 'idle'); }
+    for (const o of seeds) { const s = new Sheep({ ...o, state: 'idle' }); this.attach(s); s.setState(o!.state ?? 'idle', this); }
   }
 
   /* ---------------- SheepWorld services ---------------- */
+  get livePlay(): boolean { return useAppPhase.getState().phase === 'playing'; }
   cameraForward(out: THREE.Vector3) {
     if (!this.camera) return out.set(0, 0, -1);
     this.camera.getWorldDirection(out); out.y = 0; return out.normalize();
@@ -124,7 +160,7 @@ class World implements SheepWorld {
     for (let i = 0; i < 40; i++) {
       const x = wide ? rand(-11, 11) : rand(-2.2, 6.2), z = wide ? rand(-7.4, 7.4) : rand(-3.7, 4.3);
       let free = true;
-      for (const o of OBSTACLES) if (Math.hypot(x - o.x, z - o.z) <= o.r + 0.9) { free = false; break; }
+      for (const o of this.obstacles) if (Math.hypot(x - o.x, z - o.z) <= o.r + 0.9) { free = false; break; }
       if (free) return out.set(x, 0, z);
     }
     return out.set(2, 0, 0.5);
@@ -176,11 +212,14 @@ class World implements SheepWorld {
   }
   bumpCones(s: Sheep) {
     const p = s.pos;
-    for (const c of this.cones) {
+    for (const c of this.props) {
+      if (c.kind !== 'cone' || c.dying || !c.conePivot) continue;
       const dx = c.x - p.x, dz = c.z - p.z, d = Math.hypot(dx, dz);
-      if (d < 0.5 && Math.abs(s.speed) > 0.7 && c.cd <= 0) {
+      if (d < 0.5 && Math.abs(s.speed) > 0.7 && c.cd <= 0 && d > 1e-4) {
         c.axis.set(dz / d, 0, -dx / d); c.tv += 7 + Math.abs(s.speed) * 2; c.cd = 0.8;
-        Sfx.bonk(); s.sqV += 2;
+        s.sqV += 2;
+        if (!this.livePlay) continue;
+        Sfx.bonk();
         if (s.state === 'ride') this.award('Bonk', 10, c.x, 0.9, c.z, false, 'small');
         else this.popText(c.x, 0.9, c.z, 'bonk', 'small');
       }
@@ -188,6 +227,7 @@ class World implements SheepWorld {
   }
   onStateChanged(s: Sheep) { if (s === this.selected) this.syncUI(); }
   shake(amount: number) {
+    if (!this.livePlay) return;
     if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     this.shakeAmp = Math.min(0.16, Math.max(this.shakeAmp, amount));
   }
@@ -199,6 +239,7 @@ class World implements SheepWorld {
     return [(_a.x + 1) / 2 * innerWidth, (1 - _a.y) / 2 * innerHeight, _a.z < 1];
   }
   popText(x: number, y: number, z: number, text: string, cls = '') {
+    if (!this.livePlay) return;
     const [sx, sy, ok] = this.toScreen(x, y, z);
     if (!ok || !overlay.layer) return;
     const el = document.createElement('div'); el.className = `pop ${cls}`; el.textContent = text;
@@ -206,6 +247,7 @@ class World implements SheepWorld {
     overlay.layer.appendChild(el); el.addEventListener('animationend', () => el.remove());
   }
   award(name: string, pts: number, x: number, y: number, z: number, big = false, cls = '') {
+    if (!this.livePlay) return;
     this.combo = this.comboT > 0 ? Math.min(this.combo + 1, 5) : 1; this.comboT = 2.4;
     const total = pts * this.combo; this.score += total;
     useUI.setState({ score: this.score, combo: this.combo });
@@ -214,7 +256,7 @@ class World implements SheepWorld {
     if (this.combo >= 3 || big) this.confetti(x, y + 0.35, z, this.combo >= 4 ? 42 : 26);
   }
   say(s: Sheep, text: string) {
-    if (!overlay.layer) return;
+    if (!this.livePlay || !overlay.layer) return;
     const el = document.createElement('div'); el.className = 'bubble'; el.textContent = text;
     overlay.layer.appendChild(el);
     const b = { el, s }; this.bubbles.push(b); this.placeBubble(b);
@@ -245,30 +287,207 @@ class World implements SheepWorld {
   }
 
   /* ---------------- selection + commands ---------------- */
+  showToast(msg: string) {
+    if (this.toastTimer) clearTimeout(this.toastTimer);
+    useUI.setState({ toast: msg });
+    this.toastTimer = setTimeout(() => {
+      useUI.setState({ toast: null });
+      this.toastTimer = null;
+    }, 2200);
+  }
   select(s: Sheep) {
+    this.selectedProp = null; this.moveMode = false;
     if (this.selected === s) { s.sqV += 6; Sfx.baa(s.voicePitch * rand(1.02, 1.14), s.voiceVib, s.voiceDur); this.say(s, pick(['baa!', 'baaa~', 'meh', 'rad!', 'hi :)', 'wheee'])); return; }
     this.selected = s; this.barFresh = true;
     s.sqV += 7; Sfx.pop(); Sfx.baa(s.voicePitch, s.voiceVib, s.voiceDur); this.say(s, pick(['baa!', 'baaa?', 'ready!', 'yo!']));
     overlay.sel?.classList.remove('on'); void overlay.sel?.offsetWidth; overlay.sel?.classList.add('on');
     this.syncUI();
   }
-  deselect() { this.selected = null; overlay.sel?.classList.remove('on'); this.syncUI(); }
+  selectProp(p: ParkProp) {
+    this.selected = null; this.moveMode = false;
+    if (this.selectedProp === p) { p.sqV += 5; Sfx.pop(); return; }
+    this.selectedProp = p; this.barFresh = true;
+    p.sqV += 5; Sfx.pop();
+    overlay.sel?.classList.remove('on'); void overlay.sel?.offsetWidth; overlay.sel?.classList.add('on');
+    this.syncUI();
+  }
+  deselect() {
+    this.selected = null; this.selectedProp = null; this.moveMode = false;
+    overlay.sel?.classList.remove('on'); this.syncUI();
+  }
+  toggleBuildMode(on?: boolean) {
+    const next = on ?? !useUI.getState().buildMode;
+    if (!next) { this.moveMode = false; this.cancelPaletteDrag(); }
+    useUI.setState({ buildMode: next, moveMode: next ? this.moveMode : false });
+    Sfx.tick();
+  }
+  toggleMoveMode(on?: boolean) {
+    if (!this.selectedProp) return;
+    this.moveMode = on ?? !this.moveMode;
+    Sfx.tick();
+    this.syncUI();
+  }
   syncUI() {
-    const s = this.selected;
+    const s = this.selected, p = this.selectedProp;
+    const selected: SelectedEntity | null = s
+      ? { kind: 'sheep', id: s.id, name: s.name, state: s.state === 'goto' ? s.after : s.state }
+      : p
+        ? { kind: 'prop', id: p.id, propKind: p.kind, name: p.label, rotDeg: Math.round(((wrapA(p.rotY) * 180) / Math.PI + 360) % 360) }
+        : null;
     useUI.setState({
-      selected: s ? { id: s.id, name: s.name, state: s.state === 'goto' ? s.after : s.state } : null,
+      selected,
+      moveMode: p ? this.moveMode : false,
       canUndo: this.history.length > 0, canRedo: this.future.length > 0,
     });
   }
-  private commit(c: Cmd) { c.do(); this.history.push(c); this.future.length = 0; this.syncUI(); }
+  private commit(c: Cmd) {
+    c.do(); this.history.push(c);
+    if (this.history.length > MAX_HISTORY) this.history.shift();
+    this.future.length = 0; this.syncUI();
+  }
   undo() { const c = this.history.pop(); if (!c) return; c.undo(); this.future.push(c); Sfx.tick(); this.syncUI(); }
   redo() { const c = this.future.pop(); if (!c) return; c.do(); this.history.push(c); Sfx.tick(); this.syncUI(); }
 
+  private attachProp(p: ParkProp, pop = true) {
+    p.revive();
+    if (!pop) { p.popT = 1; p.root.scale.setScalar(1); }
+    if (!this.group.children.includes(p.root)) this.group.add(p.root);
+    this.dyingProps = this.dyingProps.filter(d => d !== p);
+    if (!this.props.includes(p)) this.props.push(p);
+    if (!this.propHitTargets.includes(p.hit)) this.propHitTargets.push(p.hit);
+    this.rebuildRegistry();
+  }
+  private detachProp(p: ParkProp) {
+    p.kill(); Sfx.poof();
+    this.puff(_b.set(p.x, 0.25, p.z), 12, 2.2, 2.0);
+    this.props = this.props.filter(x => x !== p);
+    const j = this.propHitTargets.indexOf(p.hit); if (j >= 0) this.propHitTargets.splice(j, 1);
+    this.dyingProps.push(p);
+    if (p.kind === 'rail') this.cancelGrindsOnRail(p.id);
+    if (this.selectedProp === p) this.deselect();
+    this.rebuildRegistry();
+  }
+  addProp(def: PropDef, selectIt = true): ParkProp {
+    const x = clamp(def.x, -BOUNDS.x, BOUNDS.x), z = clamp(def.z, -BOUNDS.z, BOUNDS.z);
+    const p = new ParkProp({ ...def, x, z });
+    this.commit({
+      do: () => {
+        this.attachProp(p, true);
+        Sfx.pop();
+        this.puff(_b.set(p.x, 0.12, p.z), 8, 1.4, 1.1);
+        if (selectIt) this.selectProp(p);
+        saveParkToStorage(this.serializePark());
+      },
+      undo: () => {
+        this.detachProp(p);
+        saveParkToStorage(this.serializePark());
+      },
+    });
+    return p;
+  }
+  rotateProp(deltaAngle = Math.PI / 4) {
+    const p = this.selectedProp; if (!p) return;
+    const prevRot = p.rotY, nextRot = wrapA(prevRot + deltaAngle);
+    this.commit({
+      do: () => {
+        p.setTransform(p.x, p.z, nextRot);
+        p.sqV += 4;
+        if (p.kind === 'rail') this.cancelGrindsOnRail(p.id);
+        this.rebuildRegistry();
+        Sfx.tick();
+        this.syncUI();
+        saveParkToStorage(this.serializePark());
+      },
+      undo: () => {
+        p.setTransform(p.x, p.z, prevRot);
+        p.sqV += 4;
+        if (p.kind === 'rail') this.cancelGrindsOnRail(p.id);
+        this.rebuildRegistry();
+        Sfx.tick();
+        this.syncUI();
+        saveParkToStorage(this.serializePark());
+      },
+    });
+  }
+  movePropLive(p: ParkProp, x: number, z: number) {
+    p.setTransform(clamp(x, -BOUNDS.x, BOUNDS.x), clamp(z, -BOUNDS.z, BOUNDS.z), p.rotY);
+    if (p.kind === 'rail') this.cancelGrindsOnRail(p.id);
+    this.rebuildRegistry();
+  }
+  movePropCommit(p: ParkProp, fromX: number, fromZ: number, toX: number, toZ: number) {
+    const cx = clamp(toX, -BOUNDS.x, BOUNDS.x), cz = clamp(toZ, -BOUNDS.z, BOUNDS.z);
+    if (Math.hypot(cx - fromX, cz - fromZ) < 0.02) {
+      p.setTransform(fromX, fromZ, p.rotY);
+      this.rebuildRegistry();
+      return;
+    }
+    this.commit({
+      do: () => {
+        p.setTransform(cx, cz, p.rotY);
+        p.sqV += 3;
+        if (p.kind === 'rail') this.cancelGrindsOnRail(p.id);
+        this.rebuildRegistry();
+        this.syncUI();
+        saveParkToStorage(this.serializePark());
+      },
+      undo: () => {
+        p.setTransform(fromX, fromZ, p.rotY);
+        p.sqV += 3;
+        if (p.kind === 'rail') this.cancelGrindsOnRail(p.id);
+        this.rebuildRegistry();
+        this.syncUI();
+        saveParkToStorage(this.serializePark());
+      },
+    });
+    Sfx.tick();
+  }
+  nudgeSelectedProp(dx: number, dz: number) {
+    const p = this.selectedProp; if (!p) return;
+    this.movePropCommit(p, p.x, p.z, p.x + dx, p.z + dz);
+  }
+  beginPaletteDrag(kind: PropKind) {
+    this.cancelPaletteDrag();
+    const p = new ParkProp({ kind, x: 1.5, z: 0.5, rotY: 0 });
+    p.root.visible = false;
+    this.group.add(p.root);
+    this.previewProp = p;
+    useUI.setState({ draggingPalette: kind });
+    Sfx.tick();
+  }
+  updatePalettePreview(x: number, z: number) {
+    if (!this.previewProp) return;
+    this.previewProp.root.visible = true;
+    this.previewProp.setTransform(clamp(x, -BOUNDS.x, BOUNDS.x), clamp(z, -BOUNDS.z, BOUNDS.z), this.previewProp.rotY);
+  }
+  hidePalettePreview() {
+    if (this.previewProp) this.previewProp.root.visible = false;
+  }
+  finishPaletteDrag(x?: number, z?: number) {
+    const kind = useUI.getState().draggingPalette;
+    if (!kind) return;
+    if (this.previewProp) { this.group.remove(this.previewProp.root); this.previewProp = null; }
+    useUI.setState({ draggingPalette: null });
+    let px = x, pz = z;
+    if (px === undefined || pz === undefined) {
+      this.randomSpot(false, _b);
+      px = _b.x; pz = _b.z;
+    }
+    this.addProp({ kind, x: px, z: pz, rotY: 0 }, true);
+  }
+  cancelPaletteDrag() {
+    if (this.previewProp) { this.group.remove(this.previewProp.root); this.previewProp = null; }
+    if (useUI.getState().draggingPalette) useUI.setState({ draggingPalette: null });
+  }
+
   setState(st: SheepState) {
     const s = this.selected; if (!s || s.state === st) return;
+    if (st === 'grind' && this.rails.length === 0) {
+      this.say(s, 'place a rail first!');
+      return;
+    }
     const prev: SheepState = s.state === 'goto' ? s.after : s.state === 'grind' ? 'cruise' : s.state;
     Sfx.tick();
-    this.commit({ do: () => { s.setState(st); this.onStateChanged(s); }, undo: () => { s.setState(prev); this.onStateChanged(s); } });
+    this.commit({ do: () => { s.setState(st, this); this.onStateChanged(s); }, undo: () => { s.setState(prev, this); this.onStateChanged(s); } });
     if (st === 'grind') this.say(s, 'to the rail!');
   }
   trick(type: TrickType) {
@@ -276,6 +495,25 @@ class World implements SheepWorld {
     if (s.doTrick(type)) useUI.setState(u => ({ firedTrick: { type, n: (u.firedTrick?.n ?? 0) + 1 } }));
   }
   duplicate() {
+    if (this.selectedProp) {
+      const o = this.selectedProp;
+      const x = clamp(o.x + 1.3, -BOUNDS.x, BOUNDS.x), z = clamp(o.z + 1.1, -BOUNDS.z, BOUNDS.z);
+      const c = new ParkProp({ ...o.toDef(), x, z });
+      this.commit({
+        do: () => {
+          this.attachProp(c, true);
+          Sfx.pop();
+          this.puff(_b.set(c.x, 0.12, c.z), 6, 1.2, 1);
+          this.selectProp(c);
+          saveParkToStorage(this.serializePark());
+        },
+        undo: () => {
+          this.detachProp(c);
+          saveParkToStorage(this.serializePark());
+        },
+      });
+      return;
+    }
     const o = this.selected; if (!o) return;
     const a = o.heading + Math.PI / 2;
     const x = clamp(o.pos.x + Math.sin(a) * 1.3, -11.5, 11.5), z = clamp(o.pos.z + Math.cos(a) * 1.3, -7.6, 7.6);
@@ -284,7 +522,146 @@ class World implements SheepWorld {
     c.spawnPop();
     this.commit({ do: () => { this.addSheep(c); Sfx.pop(); this.puff(c.pos, 6, 1.2, 1); this.select(c); }, undo: () => this.removeSheep(c) });
   }
-  remove() { const s = this.selected; if (!s) return; this.commit({ do: () => this.removeSheep(s), undo: () => { this.addSheep(s); Sfx.pop(); } }); }
+  remove() {
+    if (this.selectedProp) {
+      const p = this.selectedProp;
+      this.commit({
+        do: () => {
+          this.detachProp(p);
+          saveParkToStorage(this.serializePark());
+        },
+        undo: () => {
+          this.attachProp(p, true);
+          Sfx.pop();
+          saveParkToStorage(this.serializePark());
+        },
+      });
+      return;
+    }
+    const s = this.selected; if (!s) return;
+    const wasGrinding = s.state === 'grind';
+    this.commit({
+      do: () => this.removeSheep(s),
+      undo: () => {
+        this.addSheep(s);
+        if (wasGrinding) s.setState('grind', this);
+        Sfx.pop();
+      },
+    });
+  }
+
+  /* ---------------- park save / load / share ---------------- */
+  serializePark(): ParkData {
+    const props = this.props.map(p => p.toDef());
+    const flock: SerializedSheep[] = this.flock.map(s => ({
+      x: Math.round(s.pos.x * 100) / 100,
+      z: Math.round(s.pos.z * 100) / 100,
+      heading: Math.round(wrapA(s.heading) * 100) / 100,
+      state: s.state === 'goto' || s.state === 'ride' ? 'idle' : s.state,
+      color: s.color,
+      hat: s.hat,
+      name: s.name,
+    }));
+    return { version: 1, props, flock };
+  }
+  private applyParkSnapshot(data: ParkData) {
+    this.deselect();
+    for (const p of this.props) this.group.remove(p.root);
+    for (const p of this.dyingProps) this.group.remove(p.root);
+    this.props.length = 0;
+    this.dyingProps.length = 0;
+    this.propHitTargets.length = 0;
+
+    for (const def of data.props) {
+      const p = new ParkProp(def);
+      p.spawnPop();
+      this.props.push(p);
+      this.group.add(p.root);
+      this.propHitTargets.push(p.hit);
+    }
+    this.rebuildRegistry();
+
+    if (data.flock && data.flock.length > 0) {
+      for (const s of this.flock) {
+        if (s.state === 'grind') s.exitGrind();
+        this.group.remove(s.root);
+      }
+      for (const s of this.dying) this.group.remove(s.root);
+      this.flock.length = 0;
+      this.dying.length = 0;
+      this.hitTargets.length = 0;
+      for (const sd of data.flock) {
+        const s = new Sheep({ x: sd.x, z: sd.z, heading: sd.heading, state: 'idle', color: sd.color, hat: sd.hat, name: sd.name });
+        this.attach(s);
+        s.setState(sd.state ?? 'idle', this);
+      }
+    } else {
+      for (const s of this.flock) {
+        if (s.state === 'grind') s.setState('grind', this);
+      }
+    }
+    this.syncUI();
+  }
+  loadPark(data: ParkData, recordUndo = true, toastMsg: string | null = 'Park loaded!') {
+    const before = this.serializePark();
+    if (recordUndo) {
+      this.commit({
+        do: () => {
+          this.applyParkSnapshot(data);
+          saveParkToStorage(data);
+        },
+        undo: () => {
+          this.applyParkSnapshot(before);
+          saveParkToStorage(before);
+        },
+      });
+    } else {
+      this.applyParkSnapshot(data);
+    }
+    Sfx.pop();
+    if (toastMsg) this.showToast(toastMsg);
+  }
+  resetPark() {
+    this.loadPark({ version: 1, props: DEFAULT_PARK_PROPS }, true, 'Default park restored');
+    clearParkStorage();
+    if (typeof window !== 'undefined' && location.search.includes('park=')) {
+      const u = new URL(location.href);
+      u.searchParams.delete('park');
+      history.replaceState(null, '', u.toString());
+    }
+  }
+  exportPark() {
+    const data = this.serializePark();
+    saveParkToStorage(data);
+    downloadParkJson(data);
+    Sfx.pop();
+    this.showToast('Saved park JSON');
+  }
+  async importPark(file: File) {
+    try {
+      const data = await readParkJsonFile(file);
+      this.loadPark(data, true, 'Park loaded!');
+    } catch {
+      this.showToast('Invalid park file');
+    }
+  }
+  async shareParkLink() {
+    const data = this.serializePark();
+    saveParkToStorage(data);
+    const url = buildShareUrl(data);
+    try {
+      history.replaceState(null, '', url);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        this.showToast('Share link copied!');
+      } else {
+        this.showToast('Share link added to URL bar');
+      }
+      Sfx.ding();
+    } catch {
+      this.showToast('Share link added to URL bar');
+    }
+  }
   spawn() {
     const p = this.randomSpot(true, new THREE.Vector3());
     const s = new Sheep({ x: p.x, z: p.z, heading: rand(0, 6.28), state: 'idle' });
@@ -305,6 +682,7 @@ class World implements SheepWorld {
     s.state = 'ride'; s.hasTarget = false; this.syncUI();
   }
   setHovered(s: Sheep | null) { if (s !== this.hovered) { this.hovered = s; if (s && s !== this.selected) s.sqV += 3.5; } }
+  setHoveredProp(p: ParkProp | null) { if (p !== this.hoveredProp) { this.hoveredProp = p; if (p && p !== this.selectedProp) p.sqV += 3.5; } }
 
   /* ---------------- frame ---------------- */
   update(dt: number, t: number) {
@@ -320,9 +698,10 @@ class World implements SheepWorld {
       const dx = b.pos.x - a.pos.x, dz = b.pos.z - a.pos.z, d = Math.hypot(dx, dz);
       if (d < 0.85 && d > 1e-4) { const k = (0.85 - d) / 2 / d; a.pos.x -= dx * k; a.pos.z -= dz * k; b.pos.x += dx * k; b.pos.z += dz * k; }
     }
-    for (const c of this.cones) {
-      c.cd -= dt; c.tv += (-c.tilt * 55 - c.tv * 4.5) * dt; c.tilt = clamp(c.tilt + c.tv * dt, -0.5, 1.35);
-      c.pivot.quaternion.setFromAxisAngle(c.axis, c.tilt);
+    for (const p of this.props) p.update(dt, t);
+    for (let i = this.dyingProps.length - 1; i >= 0; i--) {
+      const p = this.dyingProps[i]!; p.update(dt, t);
+      if (p.gone) { this.group.remove(p.root); this.dyingProps.splice(i, 1); }
     }
     const puffDrag = Math.exp(-3.2 * dt);
     for (const q of this.puffs) if (q.m.visible) {
@@ -379,8 +758,10 @@ class World implements SheepWorld {
       this.shakeOffset.set(0, 0, 0);
     }
 
-    const h = this.hovered, sel = this.selected;
-    if (sel && !sel.dying) {
+    const h = this.hovered, sel = this.selected, hp = this.hoveredProp, selP = this.selectedProp;
+    if (!this.livePlay) {
+      Sfx.setRoll(0, true, false);
+    } else if (sel && !sel.dying) {
       const grounded = !sel.inAir && !sel.onRail;
       Sfx.setRoll(Math.abs(sel.speed), isOnPlaza(sel.pos.x, sel.pos.z), grounded);
     } else {
@@ -400,9 +781,19 @@ class World implements SheepWorld {
     if (h && h !== sel && !h.dying) {
       h.hoverK = damp(h.hoverK, 1, 14, dt);
       this.hoverRing.position.set(h.pos.x, PLAZA_TOP + 0.01, h.pos.z); this.hoverRing.material.opacity = 0.85 * h.hoverK; this.hoverRing.scale.setScalar(0.95 + Math.sin(t * 6) * 0.04);
+    } else if (hp && hp !== selP && !hp.dying) {
+      hp.hoverK = damp(hp.hoverK, 1, 14, dt);
+      this.hoverRing.position.set(hp.x, PLAZA_TOP + 0.01, hp.z); this.hoverRing.material.opacity = 0.85 * hp.hoverK; this.hoverRing.scale.setScalar(hp.ringRadius * (0.95 + Math.sin(t * 6) * 0.04));
     } else this.hoverRing.material.opacity = damp(this.hoverRing.material.opacity, 0, 14, dt);
-    if (sel) {
+
+    if (this.previewProp && this.previewProp.root.visible) {
+      this.selRing.position.set(this.previewProp.x, PLAZA_TOP + 0.012, this.previewProp.z);
+      this.selRing.material.opacity = damp(this.selRing.material.opacity, 0.9, 14, dt);
+      this.selRing.scale.setScalar(this.previewProp.ringRadius * (1 + Math.sin(t * 6) * 0.04));
+    } else if (sel) {
       this.selRing.position.set(sel.pos.x, PLAZA_TOP + 0.011, sel.pos.z); this.selRing.material.opacity = damp(this.selRing.material.opacity, 0.9, 10, dt); this.selRing.scale.setScalar(1 + Math.sin(t * 4) * 0.04);
+    } else if (selP) {
+      this.selRing.position.set(selP.x, PLAZA_TOP + 0.011, selP.z); this.selRing.material.opacity = damp(this.selRing.material.opacity, 0.9, 10, dt); this.selRing.scale.setScalar(selP.ringRadius * (1 + Math.sin(t * 4) * 0.04));
     } else this.selRing.material.opacity = damp(this.selRing.material.opacity, 0, 10, dt);
     for (let i = this.markers.length - 1; i >= 0; i--) {
       const mk = this.markers[i]!; mk.t += dt; const k = mk.t / 0.8;
@@ -414,26 +805,31 @@ class World implements SheepWorld {
     for (const b of this.bubbles) this.placeBubble(b);
   }
 
-  /** Project the selected sheep's box to screen space and drive the DOM frame/label/toolbar. */
+  /** Project the selected entity's bounding box to screen space and drive the DOM frame/label/toolbar. */
   private updateOverlay(dt: number) {
-    const s = this.selected, { sel, tag, bar } = overlay;
-    if (!s || !sel || !tag || !bar || !this.camera) return;
-    s.root.updateMatrixWorld();
+    const s = this.selected, p = this.selectedProp, { sel, tag, bar } = overlay;
+    if ((!s && !p) || !sel || !tag || !bar || !this.camera) return;
+    const corners = s ? BOX_CORNERS : p!.boxCorners;
+    const targetObj = s ? s.air : p!.root;
+    (s ? s.root : p!.root).updateMatrixWorld();
     let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
-    for (const c of BOX_CORNERS) {
-      _a.copy(c).applyMatrix4(s.air.matrixWorld).project(this.camera);
+    for (const c of corners) {
+      _a.copy(c).applyMatrix4(targetObj.matrixWorld).project(this.camera);
       const x = (_a.x + 1) / 2 * innerWidth, y = (1 - _a.y) / 2 * innerHeight;
       x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
     }
     sel.style.transform = `translate(${x0}px, ${y0}px)`; sel.style.width = `${x1 - x0}px`; sel.style.height = `${y1 - y0}px`;
-    const dist = this.camera.position.distanceTo(s.pos);
-    const label = `${s.name} · 0.72 × 1.02 m · ${dist.toFixed(0)} m away`;
+    const dist = this.camera.position.distanceTo(s ? s.pos : p!.root.position);
+    const label = s
+      ? `${s.name} · 0.72 × 1.02 m · ${dist.toFixed(0)} m away`
+      : `${p!.label} · ${p!.dimsLabel} · ${dist.toFixed(0)} m away`;
     if (tag.textContent !== label) tag.textContent = label;
     const tw = tag.offsetWidth;
     tag.style.transform = `translate(${clamp((x0 + x1) / 2 - tw / 2, 8, innerWidth - tw - 8)}px, ${y1 + 8}px)`;
     const bw = bar.offsetWidth, bh = bar.offsetHeight;
     const tx = clamp((x0 + x1) / 2 - bw / 2, 8, innerWidth - bw - 8);
-    let ty = y1 + 36; if (ty + bh > innerHeight - 70) ty = y0 - bh - 14;
+    const bottomReserve = useUI.getState().buildMode ? 136 : 70;
+    let ty = y1 + 36; if (ty + bh > innerHeight - bottomReserve) ty = y0 - bh - 14;
     if (this.barFresh) { this.barX = tx; this.barY = ty; this.barFresh = false; }
     else if (!overlay.barHover) { this.barX = damp(this.barX, tx, 9, dt); this.barY = damp(this.barY, ty, 9, dt); }
     bar.style.left = `${this.barX}px`; bar.style.top = `${this.barY}px`;
