@@ -1,16 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { useProgress } from '@react-three/drei';
 import { useAppPhase } from '../game/appPhase';
-import { BrandLogo } from './BrandLogo';
 
-const CAPTIONS = [
-  'Fluffing the fleece…',
-  'Painting the meadow…',
-  'Waxing the coral rail…',
-  'Tightening tiny trucks…',
-] as const;
-
-/** Cozy storybook loading curtain that holds until textures & 3D scene are mounted. */
+/** Paper loading curtain: the sheep rides the pencil line as progress that holds until textures & 3D scene are mounted. */
 export function LoadingScreen({ skipTitle }: { skipTitle: boolean }) {
   const { active, progress } = useProgress();
   const phase = useAppPhase(s => s.phase);
@@ -19,7 +11,6 @@ export function LoadingScreen({ skipTitle }: { skipTitle: boolean }) {
   const finishEntering = useAppPhase(s => s.finishEntering);
 
   const [pct, setPct] = useState(0);
-  const [captionIdx, setCaptionIdx] = useState(0);
   const [unmounted, setUnmounted] = useState(false);
 
   // Monotonic percentage display so Drei suspense batches never jump backward.
@@ -27,13 +18,6 @@ export function LoadingScreen({ skipTitle }: { skipTitle: boolean }) {
     const next = sceneReady && !active ? 100 : Math.min(96, Math.round(progress));
     setPct(prev => Math.max(prev, next));
   }, [active, progress, sceneReady]);
-
-  // Rotate charming storybook prep captions while loading.
-  useEffect(() => {
-    if (phase !== 'loading') return;
-    const id = window.setInterval(() => setCaptionIdx(i => (i + 1) % CAPTIONS.length), 1050);
-    return () => clearInterval(id);
-  }, [phase]);
 
   // Advance only once R3F scene has mounted inside Suspense AND Drei loader is idle.
   useEffect(() => {
@@ -66,36 +50,16 @@ export function LoadingScreen({ skipTitle }: { skipTitle: boolean }) {
       aria-label="Loading Sheep Skate"
       aria-hidden={done}
     >
-      <div className="ss-loader-hills" aria-hidden="true">
-        <svg viewBox="0 0 1440 320" preserveAspectRatio="none">
-          <path d="M0 190 Q320 110 720 185 T1440 165 L1440 320 L0 320 Z" fill="#dce8c8" />
-          <path d="M0 245 Q420 175 880 235 T1440 220 L1440 320 L0 320 Z" fill="#cde0b1" />
-        </svg>
-      </div>
+      <div className="ss-loader-inner" style={{ '--p': pct } as CSSProperties}>
+        <h1 className="ss-loader-word">Sheep Skate</h1>
 
-      <div className="ss-loader-card">
-        <div className="ss-loader-head">
-          <BrandLogo variant="badge" size={40} />
-          <div>
-            <strong>Sheep Skate</strong>
-            <span>Setting up the meadow</span>
-          </div>
-        </div>
-
-        {/* Pure CSS-composited gouache skater so it glides smoothly during texture bakes */}
-        <div className="ss-loader-stage" aria-hidden="true">
-          <svg className="ss-loader-skater" viewBox="0 0 180 96" fill="none">
-            {/* Ground line */}
-            <path d="M18 82 Q90 79 162 82" stroke="#8cc155" strokeWidth="4" strokeLinecap="round" opacity="0.65" />
-            {/* Trailing dust puffs */}
-            <g className="ss-dust-puff p1">
-              <circle cx="34" cy="72" r="6" fill="#ebe2d0" />
-              <circle cx="42" cy="74" r="4.5" fill="#f3ecde" />
-            </g>
-            <g className="ss-dust-puff p2">
-              <circle cx="22" cy="75" r="4" fill="#ebe2d0" />
-            </g>
-            {/* Bobbing sheep + skateboard */}
+        <div className="ss-loader-run" aria-hidden="true">
+          <svg className="ss-loader-line" viewBox="0 0 400 12" preserveAspectRatio="none">
+            <path d="M2 7 C60 4 110 9 170 6 S300 4 398 7" pathLength={100} className="ss-line-base" />
+            <path d="M2 7 C60 4 110 9 170 6 S300 4 398 7" pathLength={100} className="ss-line-ink" />
+          </svg>
+          <div className="ss-loader-rider">
+            <svg className="ss-loader-skater" viewBox="50 8 84 76" fill="none">
             <g className="ss-skater-bob">
               {/* Board */}
               <g transform="rotate(-4 94 70)">
@@ -142,18 +106,14 @@ export function LoadingScreen({ skipTitle }: { skipTitle: boolean }) {
               <rect x="82.8" y="27.5" width="28.6" height="6.2" rx="3.1" fill="#9fd8c6" stroke="#2b2622" strokeWidth="2" />
               <circle cx="97.5" cy="14.5" r="5.2" fill="#bff0df" stroke="#2b2622" strokeWidth="2" />
             </g>
-          </svg>
+            </svg>
+          </div>
         </div>
 
-        <div className="ss-loader-track" aria-hidden="true">
-          <div className="ss-loader-fill" style={{ width: `${pct}%` }} />
-        </div>
-
-        <div className="ss-loader-meta">
-          <span>{CAPTIONS[captionIdx]}</span>
-          <b>{pct}%</b>
-        </div>
-      </div>
-    </div>
+        <p className="ss-loader-meta">
+          <span>Setting up the meadow</span>
+          <b>{String(pct).padStart(2, '0')}</b>
+        </p>
+      </div>    </div>
   );
 }
