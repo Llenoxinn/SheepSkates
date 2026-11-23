@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react';
 import { BOARD_ARTS, BOARD_ART_SPECS, getBoardArtPreview, type BoardArt } from '../game/boardArt';
 import { BOARD_SPECS, BOARD_STYLES, type BoardStyle } from '../game/boards';
 import { ArtIcon, type ArtIconName } from './ArtIcons';
@@ -21,6 +21,7 @@ type DeckPopoverProps = {
   boardStyle: BoardStyle;
   boardArt: BoardArt;
   below: boolean;
+  offsetPx: number;
   onSelectStyle: (style: BoardStyle) => void;
   onSelectArt: (art: BoardArt) => void;
   onRandomize: () => void;
@@ -32,6 +33,7 @@ export function DeckPopover({
   boardStyle,
   boardArt,
   below,
+  offsetPx,
   onSelectStyle,
   onSelectArt,
   onRandomize,
@@ -52,12 +54,13 @@ export function DeckPopover({
     if (r.left < 10) shift = 10 - r.left;
     else if (r.right > window.innerWidth - 10) shift = window.innerWidth - 10 - r.right;
     el.style.setProperty('--shift-x', `${Math.round(shift)}px`);
-  }, [below, boardStyle, boardArt]);
+  }, [below, offsetPx, boardStyle, boardArt]);
 
   return (
     <div
       ref={ref}
       className={`deck-studio ${below ? 'below' : ''}`}
+      style={{ '--pop-gap': `${offsetPx}px` } as CSSProperties}
       role="dialog"
       aria-label="Deck Studio"
     >

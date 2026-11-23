@@ -42,6 +42,7 @@ function Toolbar({ live }: { live: boolean }) {
   const [pill, setPill] = useState({ x: 0, w: 0, on: false });
   const [boardMenuOpen, setBoardMenuOpen] = useState(false);
   const [boardBelow, setBoardBelow] = useState(false);
+  const [deckOffsetPx, setDeckOffsetPx] = useState(10);
 
   useEffect(() => { setBoardMenuOpen(false); }, [sheepSel?.id, live]);
 
@@ -131,7 +132,14 @@ function Toolbar({ live }: { live: boolean }) {
               aria-expanded={boardMenuOpen}
               data-tip={boardMenuOpen ? undefined : 'Deck Studio · C shape'}
               onClick={() => {
-                if (!boardMenuOpen) setBoardBelow((overlay.bar?.getBoundingClientRect().top ?? 300) < 305);
+                if (!boardMenuOpen) {
+                  const barR = overlay.bar?.getBoundingClientRect();
+                  const tagR = overlay.tag?.getBoundingClientRect();
+                  const below = (barR?.top ?? 300) < 330;
+                  setBoardBelow(below);
+                  const tagAbove = !below && barR && tagR && tagR.height > 0 && barR.top > tagR.top;
+                  setDeckOffsetPx(tagAbove ? Math.max(10, Math.round(barR.top - tagR.top + 8)) : 10);
+                }
                 setBoardMenuOpen(o => !o);
               }}
             >
@@ -143,6 +151,7 @@ function Toolbar({ live }: { live: boolean }) {
                 boardStyle={sheepSel?.boardStyle ?? 'street'}
                 boardArt={sheepSel?.boardArt ?? 'baa'}
                 below={boardBelow}
+                offsetPx={deckOffsetPx}
                 onSelectStyle={s => world.setBoardStyle(s)}
                 onSelectArt={a => world.setBoardArt(a)}
                 onRandomize={() => world.randomizeBoard()}
