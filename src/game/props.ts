@@ -158,6 +158,22 @@ const PROP_MAT = {
   benchLeg: new THREE.MeshStandardMaterial({ color: '#4a3b35', roughness: 0.65 }),
   treeTrunk: new THREE.MeshStandardMaterial({ color: '#7a5636', roughness: 1 }),
   hit: new THREE.MeshBasicMaterial({ visible: false }),
+  ghostValid: new THREE.MeshStandardMaterial({
+    color: '#5eead4', emissive: '#2563eb', emissiveIntensity: 0.42,
+    roughness: 0.25, metalness: 0.1, transparent: true, opacity: 0.68, depthWrite: false,
+  }),
+  ghostValidAccent: new THREE.MeshStandardMaterial({
+    color: '#bae6fd', emissive: '#0ea5e9', emissiveIntensity: 0.35,
+    roughness: 0.2, metalness: 0.2, transparent: true, opacity: 0.78, depthWrite: false,
+  }),
+  ghostInvalid: new THREE.MeshStandardMaterial({
+    color: '#fda4af', emissive: '#e11d48', emissiveIntensity: 0.52,
+    roughness: 0.3, metalness: 0.05, transparent: true, opacity: 0.68, depthWrite: false,
+  }),
+  ghostInvalidAccent: new THREE.MeshStandardMaterial({
+    color: '#fecdd3', emissive: '#f43f5e', emissiveIntensity: 0.42,
+    roughness: 0.25, metalness: 0.1, transparent: true, opacity: 0.78, depthWrite: false,
+  }),
 };
 
 function getRampMat(color: string) {
@@ -244,6 +260,8 @@ export class ParkProp {
   gone = false;
   private dieT = 0;
   hoverK = 0;
+  hoverLift = 0;
+  private ghostLook: 'off' | 'valid' | 'invalid' = 'off';
 
   constructor(def: PropDef) {
     this.kind = def.kind;
@@ -363,8 +381,10 @@ export class ParkProp {
 
     this.visual.traverse(n => {
       if ((n as THREE.Mesh).isMesh) {
-        n.castShadow = true;
-        n.receiveShadow = true;
+        const mesh = n as THREE.Mesh;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        mesh.userData.origMat = mesh.material;
       }
     });
     this.root.add(this.hit);
@@ -379,13 +399,43 @@ export class ParkProp {
     return m;
   }
 
-  setTransform(x: number, z: number, rotY: number): void {
+  setTransform(x: number, z: number, rotY: number, lift = this.hoverLift): void {
     this.x = x;
     this.z = z;
     this.rotY = rotY;
+    this.hoverLift = lift;
     const baseY = this.kind === 'cone' && isOnPlaza(x, z) ? PLAZA_TOP : 0;
-    this.root.position.set(x, baseY, z);
+    this.root.position.set(x, baseY + lift, z);
     this.root.rotation.y = rotY;
+  }
+
+  /** Toggle pooled translucent hologram appearance for glide placement or invalid hover feedback. */
+  setGhostLook(mode: 'off' | 'valid' | 'invalid'): void {
+    if (this.ghostLook === mode) return;
+    this.ghostLook = mode;
+    this.visual.traverse(n => {
+      if (!(n as THREE.Mesh).isMesh) return;
+      const mesh = n as THREE.Mesh;
+      const origMat = mesh.userData.origMat as THREE.Material | undefined;
+      if (mode === 'off') {
+        if (origMat) mesh.material = origMat;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        return;
+      }
+      mesh.castShadow = false;
+      mesh.receiveShadow = false;
+      const isAccent =
+        origMat === PROP_MAT.coping ||
+        origMat === PROP_MAT.railPost ||
+        origMat === PROP_MAT.coneWhite ||
+        origMat === PROP_MAT.benchLeg ||
+        origMat === PROP_MAT.treeTrunk;
+      mesh.material =
+        mode === 'valid'
+          ? (isAccent ? PROP_MAT.ghostValidAccent : PROP_MAT.ghostValid)
+          : (isAccent ? PROP_MAT.ghostInvalidAccent : PROP_MAT.ghostInvalid);
+    });
   }
 
   spawnPop(): void {
