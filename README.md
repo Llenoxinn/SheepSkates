@@ -1,14 +1,16 @@
 # Sheep Skate
 
-A cozy-tactile 3D pastoral skatepark diorama, interactive toybox, and skatepark editor built with procedural Three.js geometry, Canvas2D painterly textures, and synthesized Web Audio.
+A 3D pastoral skatepark diorama, interactive flock toybox, and park editor in the browser — built with React Three Fiber, procedural Canvas2D textures, and synthesized Web Audio.
+
+Select any skating sheep on the floating island to ride, pop flip tricks, grind rails, customize decks, build your own park layout, dial through seasons and weather, and share creations via JSON or URL.
 
 ---
 
-## Project Vision
+## Requirements
 
-**Sheep Skate** fuses a storybook watercolor pasture with responsive street-skate physics and Figma-style direct manipulation. Select any skating sheep on the floating island to inspect, direct, ride via keyboard, pop flip tricks, grind the rail, knock over traffic cones, or populate the park with new pastel-decked flockmates.
-
-Built with **Vite + TypeScript + React Three Fiber**: a painted procedural pasture (3K Canvas2D bake with derived normal maps), CC0 PBR relief on the concrete plaza and plywood ramps, soft PCSS shadows, and a post stack (N8AO ambient occlusion, tilt-shift miniature blur, ACES tone mapping, SMAA). The original single-file prototype is kept in [`prototype/index.html`](prototype/index.html). See [ADR-0004](docs/adr/0004-react-three-fiber-stack.md) and [ADR-0005](docs/adr/0005-hybrid-procedural-and-cc0-textures.md).
+- **Node.js** `^20.19.0` or `>=22.12.0` (required by Vite 8) and **npm**
+- **WebGL2-capable browser** (click anywhere once to unlock Web Audio)
+- **Google Chrome** *(optional)* — only needed to run the headless screenshot script (`scripts/shot.mjs`)
 
 ---
 
@@ -16,67 +18,138 @@ Built with **Vite + TypeScript + React Three Fiber**: a painted procedural pastu
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173
-npm run build      # typecheck + production build in dist/
-npm run preview    # serve the production build
+npm run dev
 ```
 
-Open in any WebGL2 browser and click once to unlock audio. URL options: `?fx=0` turns off post-processing, `?demo` auto-selects a sheep.
+Opens at `http://localhost:5173`.
 
-Visual check (uses your installed Chrome): `node scripts/shot.mjs http://localhost:5173/?demo shot.png 6000`
+### Commands
 
----
+| Command | Description |
+| :--- | :--- |
+| `npm run dev` | Start the Vite dev server on port `5173` (auto-opens browser) |
+| `npm run typecheck` | Run strict TypeScript checking (`tsc --noEmit`) |
+| `npm run build` | Typecheck and build the production bundle into `dist/` |
+| `npm run preview` | Serve the production `dist/` build locally |
+| `node scripts/shot.mjs [url] [out.png] [waitMs]` | Capture a `1400×850` screenshot in Chrome (defaults: `http://localhost:5173/`, `shot.png`, `6000`) |
 
-## Controls & Keyboard Shortcuts
+### URL Parameters
 
-| Input | Context | Action |
-| :--- | :--- | :--- |
-| **Left-click sheep** | Any | Select sheep (re-click selected sheep to bounce & *baa*) |
-| **Double-click sheep** | Any | Trigger a `360` spin trick |
-| **Left-click ground** | Sheep selected | Send selected sheep (`goto`) to clicked point; clicking outside island deselects |
-| **Left-drag / Scroll** | Canvas | Orbit camera (`OrbitControls`, pan disabled) and zoom (`12–70` m) |
-| **`W A S D` / Arrow keys** | Sheep selected | Enter `ride` mode with camera-relative steering |
-| **`Space`** | Sheep selected | **Ollie** (`+50` base pts) |
-| **`F`** | Sheep selected | **Kickflip** (`+150` base pts) |
-| **`E`** | Sheep selected | **360 Spin** (`+200` base pts) |
-| **`1` / `2` / `3`** | Sheep selected | Switch behavior state: **Idle** / **Cruise** / **Grind the rail** |
-| **`N`** | Global | Drop a new sheep from the sky onto a clear spot |
-| **`M`** | Global | Mute / unmute procedural Web Audio (`Sfx`) |
-| **`Ctrl/Cmd + D`** | Sheep selected | Duplicate selected sheep (`dupSel`) |
-| **`Delete` / `Backspace`** | Sheep selected | Remove selected sheep with puff effect (`delSel`) |
-| **`Ctrl/Cmd + Z`** | Global | Undo last add, delete, duplicate, or state command |
-| **`Ctrl/Cmd + Shift + Z` / `Ctrl/Cmd + Y`** | Global | Redo last undone command |
-| **`Esc`** | Sheep selected | Deselect active sheep |
+- `?demo` — skip the title screen and auto-select the first sheep
+- `?skipTitle=1` — jump straight past the title screen
+- `?fx=0` — disable post-processing (useful on low-end GPUs or when debugging)
+- `?fxlist=ao,tilt,bloom,smaa,vig` — enable a specific subset of post-processing passes
+- `?park=<data>` — load a shared park layout directly from a link
 
 ---
 
-## Current Prototype vs. Planned Roadmap
+## Features
 
-| Capability | Prototype (`index.html`) | Planned Expansion |
-| :--- | :--- | :--- |
-| **World & Art** | Floating `26 × 18 m` procedural painterly island, concrete `"BAA"` plaza, glossy pond, 11 trees, 900 grass tufts, 3 clouds | Rideable quarter pipes & funbox, destructible/placeable pastoral props (hay bales, barn kicker, benches), LOD/instancing |
-| **Sheep & Physics** | 9 initial sheep, 7 board colors, 16 names, `idle`/`cruise`/`goto`/`ride`/`grind` states, variable `dt` Euler physics | Fixed `1/60 s` physics accumulator + render interpolation, surface heightfield ramps, manuals, lip airs, flock interactions |
-| **Tricks & Scoring** | Ollie, Kickflip, 360, Boardslide, Cone Bonk; `2.4 s` combo timer up to `×5` | Grabs, 50-50 / 5-0 ledge grinds, gap bonuses, trick variety decay, 2-minute **Style Jam** mode |
-| **Editor & Persistence** | Select/move/state/trick toolbar, add/duplicate/delete, unbounded undo/redo | Full park obstacle placement, flock customizer, Zod-validated JSON save/load, bounded command history (`<= 100`) |
-| **Audio** | 10 procedural Web Audio synth voices (`baa` formant filter, `clank`, `hiss`, `whoosh`, etc.) | Ref-counted multi-sheep rail hiss, surface-aware wheel rolling audio, stereo panning, ambient pastoral bed |
+- **Skating & Combos:** Select any sheep to send it rolling (`goto`), ride with `WASD`/Arrows, pop Ollies, Kickflips, 360s, rail Boardslides, and bonk cones — chaining tricks within `2.4 s` up to a `×5` multiplier.
+- **Park Builder:** Toggle Build Mode (`B`) to place, glide-move, rotate in `45°` steps, `0.5 m` grid-snap, duplicate, or delete ramps, rails, ledges, cones, benches, and trees, backed by 100-step undo/redo.
+- **Deck Studio:** Customize any sheep's skateboard across 4 pooled 3D shapes (`Street`, `Cruiser`, `Old School`, `Pintail`) and 8 procedural Canvas2D deck artworks.
+- **Seasons & Weather:** Switch or auto-cycle Spring, Summer, Autumn, and Winter alongside Clear, Rain, Snow, and Fog — dynamically shifting lighting, foliage, snow cover, icy plaza slide, and wet riding drag.
+- **Save & Share:** Auto-saves to `localStorage`, exports/imports validated `.json` park files, and copies compact `?park=...` share links.
+- **Procedural Audio & Hybrid Art:** Synthesized Web Audio sound effects (no external audio files), 3K procedural Canvas2D pasture with derived normals, CC0 PBR concrete/plywood/dirt, PCSS soft shadows, and ACES post-processing.
 
 ---
 
-## Documentation Map
+## Tech Stack
+
+| Layer | Technology |
+| :--- | :--- |
+| **Build & Language** | Vite 8, TypeScript 7 (`strict`), React 19 |
+| **3D Engine** | Three.js, `@react-three/fiber` 9, `@react-three/drei` 10 |
+| **Post-Processing** | `@react-three/postprocessing` 3 + `postprocessing` (N8AO, TiltShift2, Bloom, ACES Filmic, HueSaturation, SMAA, Vignette) |
+| **State** | Zustand 5 (HUD & app lifecycle; simulation runs imperatively in a single `useFrame` loop) |
+| **Audio & Textures** | Procedural Web Audio API (`src/game/sfx.ts`), Canvas2D procedural bakes + CC0 Poly Haven PBR maps |
+| **Visual Checks** | `playwright-core` (`scripts/shot.mjs`) |
+
+---
+
+## Controls
+
+### Camera & Selection
+
+| Input | Action |
+| :--- | :--- |
+| **Left-click sheep / piece** | Select entity (re-click selected sheep to bounce & *baa*) |
+| **Double-click sheep** | Trigger a `360` spin trick |
+| **Left-click ground** *(sheep selected)* | Send sheep to clicked spot; click outside island to deselect |
+| **Left-drag / Scroll** | Orbit camera and zoom (`12–70 m`) |
+
+### Skating *(sheep selected)*
+
+| Key | Action |
+| :--- | :--- |
+| `W A S D` / Arrow keys | Ride with camera-relative steering |
+| `Space` / `F` / `E` | Ollie / Kickflip / 360 Spin |
+| `1` / `2` / `3` | Switch behavior: Idle / Cruise / Grind rail |
+| `C` | Cycle board shape |
+
+### Park Builder *(Build Mode or piece selected)*
+
+| Key / Input | Action |
+| :--- | :--- |
+| `B` | Toggle Build Mode |
+| `1`–`6` *(Build Mode)* | Quick-arm Ramp, Rail, Ledge, Cone, Bench, or Tree |
+| `Shift` + Click | Multi-place armed piece |
+| `G` or Drag piece | Move selected piece |
+| `Q` / `[` and `R` / `E` / `]` | Rotate piece `-45°` / `+45°` |
+| `W A S D` / Arrows *(piece selected)* | Nudge piece by `0.5 m` |
+| Hold `Alt` | Snap placement or movement to `0.5 m` grid |
+| Right-click / `Esc` | Cancel placement or move |
+
+### Global
+
+| Key | Action |
+| :--- | :--- |
+| `N` | Drop a new sheep onto the island |
+| `M` | Mute / unmute audio |
+| `H` / `?` | Open or close the How to Play guide |
+| `Ctrl/Cmd + D` | Duplicate selected sheep or piece |
+| `Delete` / `Backspace` | Remove selected sheep or piece |
+| `Ctrl/Cmd + Z` | Undo |
+| `Ctrl/Cmd + Shift + Z` / `Ctrl/Cmd + Y` | Redo |
+| `Esc` | Cancel active tool, deselect, or close Build Mode |
+
+---
+
+## Project Structure
+
+```text
+src/
+├── App.tsx           # Canvas setup, URL parameters, park auto-load, and phase wiring
+├── game/             # Imperative sim, world orchestrator, sheep, boards, props, weather, SFX, stores
+├── scene/            # React Three Fiber scene components (Island, Flock, Props, Sky, Stage, WeatherFX)
+└── ui/               # React HUD, Build palette, Deck Studio popover, Season dial, Title & How-to-Play overlays
+public/
+├── art/              # Title screen artwork
+└── textures/         # CC0 PBR textures (concrete, plywood, dirt)
+scripts/
+└── shot.mjs          # Headless Chrome screenshot utility
+prototype/
+└── index.html        # Archived original single-file Three.js prototype
+docs/                 # Design specs, 3D architecture, art/audio direction, roadmap, and ADRs
+```
+
+---
+
+## Documentation
 
 | Document | Purpose |
 | :--- | :--- |
-| [`AGENTS.md`](AGENTS.md) | Concise AI-agent constitution: rules, coordinate conventions, hot-loop guardrails, commands, and context links |
-| [`agentic.md`](agentic.md) | Mandatory step-by-step atomic commit rule (**commit each step**, no bulky commits) and commit format |
-| [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md) | Design pillars, core loops, sheep state machine, trick/combo math, park zones, and game modes |
-| [`docs/3D_ARCHITECTURE.md`](docs/3D_ARCHITECTURE.md) | Three.js scene graph, sheep transform hierarchy, target `src/` module boundaries, physics engine, and perf budgets |
-| [`docs/ART_AND_AUDIO_DIRECTION.md`](docs/ART_AND_AUDIO_DIRECTION.md) | Visual tokens, typography, procedural texture & Web Audio synthesis specs, UI motion, and mobile accessibility |
-| [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) | Verified `index.html` bug/tech-debt ledger and phased roadmap (Phase 0 through Phase 4) |
-| [`docs/AGENTIC_WORKFLOWS.md`](docs/AGENTIC_WORKFLOWS.md) | Trust spectrum, feature/bug/refactor workflows, prompt templates, test pyramid, and pre-PR review checklist |
-| [`docs/adr/README.md`](docs/adr/README.md) | Index and template for Architecture Decision Records (`0001` procedural assets, `0002` fixed-step sim, `0003` DOM HUD) |
+| [`AGENTS.md`](AGENTS.md) | Engineering rules, coordinate contract, hot-loop guardrails, and commands |
+| [`agentic.md`](agentic.md) | Atomic step-by-step commit protocol |
+| [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md) | Design pillars, core loops, sheep state machine, and trick/combo math |
+| [`docs/3D_ARCHITECTURE.md`](docs/3D_ARCHITECTURE.md) | Scene graph, transform hierarchy, module boundaries, and perf budgets |
+| [`docs/ART_AND_AUDIO_DIRECTION.md`](docs/ART_AND_AUDIO_DIRECTION.md) | Palette, shaders, procedural texture bakes, and Web Audio synthesis |
+| [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) | Bug/tech-debt ledger and phased roadmap |
+| [`docs/AGENTIC_WORKFLOWS.md`](docs/AGENTIC_WORKFLOWS.md) | Development workflows, test pyramid, and pre-PR checklist |
+| [`docs/adr/README.md`](docs/adr/README.md) | Architecture Decision Records (`ADR-0001`–`ADR-0005`) |
 
 ---
 
 ## Credits
 
-PBR textures (`public/textures/`) are CC0 from [Poly Haven](https://polyhaven.com): *Smooth Concrete Floor*, *Plywood*, *Dirt*.
+PBR textures in [`public/textures/`](public/textures/) are CC0 from [Poly Haven](https://polyhaven.com): *Smooth Concrete Floor*, *Plywood*, and *Dirt*.
