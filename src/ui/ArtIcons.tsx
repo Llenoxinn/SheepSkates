@@ -30,7 +30,11 @@ export type ArtIconName =
   | 'ledge'
   | 'cone'
   | 'bench'
-  | 'tree';
+  | 'tree'
+  | 'boardStreet'
+  | 'boardCruiser'
+  | 'boardOldschool'
+  | 'boardPintail';
 
 const INK = '#3a2f2b';
 
@@ -280,6 +284,72 @@ const ICONS: Record<ArtIconName, ReactNode> = {
       <circle cx="8.5" cy="11.2" r="3.4" fill="#7cb547" stroke={INK} strokeWidth="1.4" />
       <circle cx="15.5" cy="11.2" r="3.4" fill="#7cb547" stroke={INK} strokeWidth="1.4" />
       <circle cx="12" cy="8.2" r="4.4" fill="#9fd164" stroke={INK} strokeWidth="1.5" />
+    </>
+  ),
+  boardStreet: (
+    <>
+      <g transform="rotate(30 12 12)">
+        <rect x="7.4" y="6.8" width="1.8" height="2.4" rx="0.7" fill="#f5ecd6" stroke={INK} strokeWidth="1.1" />
+        <rect x="14.8" y="6.8" width="1.8" height="2.4" rx="0.7" fill="#f5ecd6" stroke={INK} strokeWidth="1.1" />
+        <rect x="7.4" y="14.8" width="1.8" height="2.4" rx="0.7" fill="#f5ecd6" stroke={INK} strokeWidth="1.1" />
+        <rect x="14.8" y="14.8" width="1.8" height="2.4" rx="0.7" fill="#f5ecd6" stroke={INK} strokeWidth="1.1" />
+        <rect x="8.8" y="3" width="6.4" height="18" rx="3.2" fill="#ff8fa3" stroke={INK} strokeWidth="1.6" />
+        <rect x="9.9" y="5" width="4.2" height="14" rx="2.1" fill="#3b3944" />
+      </g>
+    </>
+  ),
+  boardCruiser: (
+    <>
+      <g transform="rotate(30 12 12)">
+        <rect x="7.2" y="7" width="2" height="2.6" rx="0.8" fill="#faf4e8" stroke={INK} strokeWidth="1.1" />
+        <rect x="14.8" y="7" width="2" height="2.6" rx="0.8" fill="#faf4e8" stroke={INK} strokeWidth="1.1" />
+        <rect x="7.5" y="14.8" width="2" height="2.6" rx="0.8" fill="#faf4e8" stroke={INK} strokeWidth="1.1" />
+        <rect x="14.5" y="14.8" width="2" height="2.6" rx="0.8" fill="#faf4e8" stroke={INK} strokeWidth="1.1" />
+        <path
+          d="M12 3.2c2.6 0 3.7 2.2 3.6 5.1-.1 2.9-.8 6.4-.4 12.1L12 17.6 8.8 20.4c.4-5.7-.3-9.2-.4-12.1-.1-2.9 1-5.1 3.6-5.1Z"
+          fill="#6fd0b4"
+          stroke={INK}
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+        <path d="M12 5.4v10.2" stroke="#faf4e8" strokeWidth="1.3" strokeLinecap="round" />
+      </g>
+    </>
+  ),
+  boardOldschool: (
+    <>
+      <g transform="rotate(30 12 12)">
+        <rect x="6.5" y="7.1" width="2" height="2.5" rx="0.7" fill="#2f2c35" stroke={INK} strokeWidth="1.1" />
+        <rect x="15.5" y="7.1" width="2" height="2.5" rx="0.7" fill="#2f2c35" stroke={INK} strokeWidth="1.1" />
+        <rect x="6.5" y="14.9" width="2" height="2.5" rx="0.7" fill="#2f2c35" stroke={INK} strokeWidth="1.1" />
+        <rect x="15.5" y="14.9" width="2" height="2.5" rx="0.7" fill="#2f2c35" stroke={INK} strokeWidth="1.1" />
+        <path
+          d="M12 2.8c2.2 1.2 3.9 3.2 4.1 5.7.1 1.6-.9 2.8-.9 4.2 0 1.7 1.1 3.2.8 5.5l-.9 2.2H8.9l-.9-2.2c-.3-2.3.8-3.8.8-5.5 0-1.4-1-2.6-.9-4.2.2-2.5 1.9-4.5 4.1-5.7Z"
+          fill="#ffd166"
+          stroke={INK}
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+        <rect x="9.6" y="7" width="4.8" height="10.4" rx="1.6" fill="#3b3944" />
+      </g>
+    </>
+  ),
+  boardPintail: (
+    <>
+      <g transform="rotate(30 12 12)">
+        <rect x="7.8" y="6.2" width="2" height="2.8" rx="0.8" fill="#f4cf86" stroke={INK} strokeWidth="1.1" />
+        <rect x="14.2" y="6.2" width="2" height="2.8" rx="0.8" fill="#f4cf86" stroke={INK} strokeWidth="1.1" />
+        <rect x="7.8" y="15" width="2" height="2.8" rx="0.8" fill="#f4cf86" stroke={INK} strokeWidth="1.1" />
+        <rect x="14.2" y="15" width="2" height="2.8" rx="0.8" fill="#f4cf86" stroke={INK} strokeWidth="1.1" />
+        <path
+          d="M12 2c2.5 2.4 3.4 5.5 3.3 9.2-.1 3.8-1 7.6-3.3 10.8-2.3-3.2-3.2-7-3.3-10.8C8.6 7.5 9.5 4.4 12 2Z"
+          fill="#a59cf5"
+          stroke={INK}
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+        <path d="M12 4.6v14.8" stroke="#f7efe0" strokeWidth="1.3" strokeLinecap="round" />
+      </g>
     </>
   ),
 };

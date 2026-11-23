@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAppPhase } from '../game/appPhase';
+import { BOARD_SPECS, BOARD_STYLES, type BoardStyle } from '../game/boards';
 import type { PropKind } from '../game/props';
 import { Sfx } from '../game/sfx';
 import { useUI, type SheepState, type TrickType } from '../game/store';
@@ -7,6 +8,13 @@ import { overlay, world } from '../game/world';
 import { ArtIcon, type ArtIconName } from './ArtIcons';
 import { BrandLogo } from './BrandLogo';
 import { SeasonDial } from './SeasonDial';
+
+const BOARD_ICON: Record<BoardStyle, ArtIconName> = {
+  street: 'boardStreet',
+  cruiser: 'boardCruiser',
+  oldschool: 'boardOldschool',
+  pintail: 'boardPintail',
+};
 
 const PALETTE_PIECES: { kind: PropKind; label: string; icon: ArtIconName }[] = [
   { kind: 'ramp', label: 'Ramp', icon: 'ramp' },
@@ -37,7 +45,28 @@ function Toolbar({ live }: { live: boolean }) {
   const canUndo = useUI(s => s.canUndo), canRedo = useUI(s => s.canRedo);
   const fired = useUI(s => s.firedTrick);
   const segRef = useRef<HTMLDivElement>(null);
+  const boardWrapRef = useRef<HTMLDivElement>(null);
   const [pill, setPill] = useState({ x: 0, w: 0, on: false });
+  const [boardMenuOpen, setBoardMenuOpen] = useState(false);
+  const [boardBelow, setBoardBelow] = useState(false);
+
+  useEffect(() => { setBoardMenuOpen(false); }, [sheepSel?.id, live]);
+
+  useEffect(() => {
+    if (!boardMenuOpen) return;
+    const onDown = (e: PointerEvent) => {
+      if (!boardWrapRef.current?.contains(e.target as Node)) setBoardMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.stopPropagation(); setBoardMenuOpen(false); }
+    };
+    addEventListener('pointerdown', onDown);
+    addEventListener('keydown', onKey, true);
+    return () => {
+      removeEventListener('pointerdown', onDown);
+      removeEventListener('keydown', onKey, true);
+    };
+  }, [boardMenuOpen]);
 
   useLayoutEffect(() => {
     const sync = () => {
@@ -101,6 +130,43 @@ function Toolbar({ live }: { live: boolean }) {
               <span>{t.label}</span>
             </button>
           ))}
+          <span className="sep" />
+          <div className="board-wrap" ref={boardWrapRef}>
+            <button
+              className={boardMenuOpen ? 'active-pop' : ''}
+              aria-haspopup="menu"
+              aria-expanded={boardMenuOpen}
+              data-tip={boardMenuOpen ? undefined : 'Board style · C'}
+              onClick={() => {
+                if (!boardMenuOpen) setBoardBelow((overlay.bar?.getBoundingClientRect().top ?? 200) < 120);
+                setBoardMenuOpen(o => !o);
+              }}
+            >
+              <ArtIcon name={BOARD_ICON[sheepSel?.boardStyle ?? 'street']} size={16} className="btn-ic" />
+              <span>{BOARD_SPECS[sheepSel?.boardStyle ?? 'street'].label}</span>
+            </button>
+            {boardMenuOpen && (
+              <div className={`board-pop ${boardBelow ? 'below' : ''}`} role="menu" aria-label="Board style">
+                {BOARD_STYLES.map(id => {
+                  const spec = BOARD_SPECS[id];
+                  const active = sheepSel?.boardStyle === id;
+                  return (
+                    <button
+                      key={id}
+                      role="menuitemradio"
+                      aria-checked={active}
+                      className={active ? 'checked' : ''}
+                      onClick={() => { world.setBoardStyle(id); setBoardMenuOpen(false); }}
+                    >
+                      <ArtIcon name={BOARD_ICON[id]} size={22} />
+                      <b>{spec.label}</b>
+                      <small>{spec.subtitle}</small>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </>
       )}
       <span className="sep" />
@@ -254,7 +320,7 @@ export function Hud() {
         {selected?.kind === 'prop' ? (
           <span className="swap" key="prop"><span>Drag piece to move</span><span><kbd>Q</kbd><kbd>R</kbd> rotate</span><span className="opt"><kbd>Ctrl</kbd><kbd>D</kbd> duplicate</span><span className="opt"><kbd>Del</kbd> delete</span><span className="opt"><kbd>Esc</kbd> deselect</span></span>
         ) : selected?.kind === 'sheep' ? (
-          <span className="swap" key="b"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> ride</span><span><kbd>Space</kbd> ollie</span><span className="opt"><kbd>F</kbd> kickflip</span><span className="opt"><kbd>E</kbd> 360</span><span>Click grass to send</span><span className="opt"><kbd>Esc</kbd> deselect</span></span>
+          <span className="swap" key="b"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> ride</span><span><kbd>Space</kbd> ollie</span><span className="opt"><kbd>F</kbd> kickflip</span><span className="opt"><kbd>E</kbd> 360</span><span className="opt"><kbd>C</kbd> board</span><span>Click grass to send</span><span className="opt"><kbd>Esc</kbd> deselect</span></span>
         ) : buildMode ? (
           <span className="swap" key="build"><span>Drag pieces onto the island</span><span className="opt">Click any piece to edit</span><span className="opt"><kbd>Ctrl</kbd><kbd>Z</kbd> undo</span><span><kbd>B</kbd> close build</span></span>
         ) : (
