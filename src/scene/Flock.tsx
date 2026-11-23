@@ -220,6 +220,7 @@ export function Flock() {
         case ' ': e.preventDefault(); world.trick('ollie'); break;
         case 'f': world.trick('kickflip'); break;
         case 'e': world.trick('spin'); break;
+        case 'c': world.cycleBoardStyle(); break;
         case '1': world.setState('idle'); break;
         case '2': world.setState('cruise'); break;
         case '3': world.setState('grind'); break;

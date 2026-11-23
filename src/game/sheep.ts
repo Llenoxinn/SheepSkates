@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { BOARD_STYLES, populateBoardGroup, type BoardStyle } from './boards';
 import { BOARD_COLORS, BOUNDS, GRAVITY, isOnPlaza, NAMES, RAIL, RAIL_Y, SHEEP_SCALE, type Obstacle } from './config';
 import { clamp, damp, dampA, easeInBack, easeOutBack, pick, rand, rng, wrapA } from './math';
 import type { RailSegment } from './props';
@@ -42,10 +42,6 @@ const GEO = {
   cheek: ellipsoid(0.048, 0.028, 0.018, 10, 8),
   leg: new THREE.CylinderGeometry(0.042, 0.036, 0.2, 12),
   tail: new THREE.IcosahedronGeometry(0.085, 3),
-  deck: new RoundedBoxGeometry(0.42, 0.05, 1.08, 4, 0.022),
-  grip: new RoundedBoxGeometry(0.38, 0.012, 1.0, 2, 0.005),
-  truck: new RoundedBoxGeometry(0.3, 0.04, 0.08, 2, 0.012),
-  wheel: (() => { const g = new THREE.CylinderGeometry(0.056, 0.056, 0.05, 20); g.rotateZ(Math.PI / 2); return g; })(),
   hat: new THREE.SphereGeometry(0.16, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2),
   pom: new THREE.IcosahedronGeometry(0.058, 3),
   hit: new THREE.BoxGeometry(0.8, 1.1, 1.3),
@@ -98,12 +94,8 @@ const MAT = {
   glint: new THREE.MeshBasicMaterial({ color: '#ffffff' }),
   nose: new THREE.MeshStandardMaterial({ color: '#d69595', roughness: 0.55 }),
   cheek: new THREE.MeshStandardMaterial({ color: '#ff9fb4', roughness: 0.6 }),
-  grip: new THREE.MeshStandardMaterial({ color: '#3f3d48', roughness: 0.95 }),
-  truck: new THREE.MeshStandardMaterial({ color: '#bcc1cc', roughness: 0.3, metalness: 0.8 }),
-  wheel: new THREE.MeshStandardMaterial({ color: '#f5ecd6', roughness: 0.45 }),
   hit: new THREE.MeshBasicMaterial({ visible: false }),
 };
-const deckMats = BOARD_COLORS.map(c => new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.45, clearcoat: 0.6, clearcoatRoughness: 0.3 }));
 const hatMats = BOARD_COLORS.map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.95 }));
 const blobTex = baked('blob', () => radialTex('rgba(40,30,20,.9)', 'rgba(40,30,20,0)'));
 
@@ -168,11 +160,12 @@ const _v = new THREE.Vector3();
 
 let nextId = 1;
 
-export type SheepOpts = { x?: number; z?: number; heading?: number; state?: SheepState; color?: number; hat?: boolean; name?: string };
+export type SheepOpts = { x?: number; z?: number; heading?: number; state?: SheepState; color?: number; hat?: boolean; name?: string; boardStyle?: BoardStyle };
 
 export class Sheep {
   readonly id = nextId++;
   readonly name: string; readonly color: number; readonly hat: boolean;
+  boardStyle: BoardStyle; private wheelRadius = 0.056;
   readonly voicePitch: number; readonly voiceVib: number; readonly voiceDur: number;
   readonly root = new THREE.Group(); readonly air = new THREE.Group();
   private lean = new THREE.Group(); private board = new THREE.Group(); private rider = new THREE.Group();
@@ -197,6 +190,7 @@ export class Sheep {
     this.name = o.name ?? nextName(); usedNames.add(this.name);
     this.color = o.color ?? ((Math.random() * BOARD_COLORS.length) | 0);
     this.hat = o.hat ?? Math.random() < 0.35;
+    this.boardStyle = o.boardStyle ?? BOARD_STYLES[(this.id - 1) % BOARD_STYLES.length]!;
     this.voicePitch = rand(0.82, 1.24);
     this.voiceVib = rand(6.2, 9.2);
     this.voiceDur = rand(0.42, 0.62);
@@ -207,12 +201,7 @@ export class Sheep {
 
     // board (pivot at deck centre so kickflips spin around the long axis)
     this.board.position.y = 0.16;
-    this.board.add(new THREE.Mesh(GEO.deck, deckMats[this.color]));
-    const grip = new THREE.Mesh(GEO.grip, MAT.grip); grip.position.y = 0.026; this.board.add(grip);
-    for (const zz of [-0.34, 0.34]) {
-      const t = new THREE.Mesh(GEO.truck, MAT.truck); t.position.set(0, -0.05, zz); this.board.add(t);
-      for (const xx of [-0.165, 0.165]) { const w = new THREE.Mesh(GEO.wheel, MAT.wheel); w.position.set(xx, -0.095, zz); this.board.add(w); this.wheels.push(w); }
-    }
+    this.wheelRadius = populateBoardGroup(this.board, this.boardStyle, this.color, this.wheels);
 
     // rider (pivot at deck top so squash keeps hooves planted)
     this.rider.position.y = 0.186;
@@ -249,6 +238,12 @@ export class Sheep {
   get pos() { return this.root.position; }
 
   /* ---------------- state + tricks ---------------- */
+  setBoardStyle(style: BoardStyle) {
+    if (this.boardStyle === style) return;
+    this.boardStyle = style;
+    this.wheelRadius = populateBoardGroup(this.board, style, this.color, this.wheels);
+    this.sqV += 5.5;
+  }
   setState(st: SheepState, w?: SheepWorld) {
     if (this.state === 'grind' && st !== 'grind') this.exitGrind();
     this.state = st; this.hasTarget = false;
@@ -582,8 +577,8 @@ export class Sheep {
     this.air.position.y = this.y;
     this.air.rotation.y = this.spin + this.slideYaw;
     this.board.rotation.set(this.pitch, 0, this.flip);
-    const wr = this.speed * dt / 0.056; for (const wh of this.wheels) wh.rotation.x += wr;
+    const wr = this.speed * dt / this.wheelRadius; for (const wh of this.wheels) wh.rotation.x += wr;
     const hb = 1 / (1 + this.y * 0.9);
-    this.blob.scale.set(0.95 * hb, 1.3 * hb, 1); this.blob.material.opacity = 0.32 * hb;
+    this.blob.scale.set(0.95 * hb, (this.boardStyle === 'pintail' ? 1.44 : 1.3) * hb, 1); this.blob.material.opacity = 0.32 * hb;
   }
 }

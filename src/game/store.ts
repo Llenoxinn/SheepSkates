@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import type { BoardStyle } from './boards';
+import type { PlacementCheck } from './config';
 import type { PropKind } from './props';
 import type { SeasonId, WeatherId, WeatherMode } from './weather';
 
@@ -7,7 +9,7 @@ export type TrickType = 'ollie' | 'kickflip' | 'spin';
 export type GamePhase = 'title' | 'playing';
 
 export type SelectedEntity =
-  | { kind: 'sheep'; id: number; name: string; state: SheepState }
+  | { kind: 'sheep'; id: number; name: string; state: SheepState; boardStyle: BoardStyle }
   | { kind: 'prop'; id: number; propKind: PropKind; name: string; rotDeg: number };
 
 /** UI-facing state only. Per-frame values (positions, overlay boxes) never go through React. */
@@ -17,6 +19,11 @@ type UIState = {
   buildMode: boolean;
   moveMode: boolean;
   draggingPalette: PropKind | null;
+  placingKind: PropKind | null;
+  placingRotDeg: number;
+  placingValid: boolean;
+  placingReason: PlacementCheck['reason'];
+  gridSnap: boolean;
   toast: string | null;
   score: number;
   combo: number;
@@ -38,6 +45,11 @@ export const useUI = create<UIState>(() => ({
   buildMode: false,
   moveMode: false,
   draggingPalette: null,
+  placingKind: null,
+  placingRotDeg: 0,
+  placingValid: true,
+  placingReason: 'ok',
+  gridSnap: false,
   toast: null,
   score: 0,
   combo: 1,
