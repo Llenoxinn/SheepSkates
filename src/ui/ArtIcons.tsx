@@ -34,7 +34,9 @@ export type ArtIconName =
   | 'boardStreet'
   | 'boardCruiser'
   | 'boardOldschool'
-  | 'boardPintail';
+  | 'boardPintail'
+  | 'deck'
+  | 'randomize';
 
 const INK = '#3a2f2b';
 
@@ -350,6 +352,27 @@ const ICONS: Record<ArtIconName, ReactNode> = {
         />
         <path d="M12 4.6v14.8" stroke="#f7efe0" strokeWidth="1.3" strokeLinecap="round" />
       </g>
+    </>
+  ),
+  deck: (
+    <g transform="rotate(28 12 12)">
+      <rect x="6.9" y="6.6" width="2.2" height="2.7" rx="0.8" fill="#ffe066" stroke={INK} strokeWidth="1.15" />
+      <rect x="14.9" y="6.6" width="2.2" height="2.7" rx="0.8" fill="#ffe066" stroke={INK} strokeWidth="1.15" />
+      <rect x="6.9" y="14.7" width="2.2" height="2.7" rx="0.8" fill="#ffe066" stroke={INK} strokeWidth="1.15" />
+      <rect x="14.9" y="14.7" width="2.2" height="2.7" rx="0.8" fill="#ffe066" stroke={INK} strokeWidth="1.15" />
+      <rect x="8.3" y="2.6" width="7.4" height="18.8" rx="3.7" fill="#ff947c" stroke={INK} strokeWidth="1.6" />
+      <rect x="9.8" y="5.2" width="4.4" height="13.6" rx="2.2" fill="#373540" />
+      <path d="M12 6.8v10.4" stroke="#fff4e0" strokeWidth="1.2" strokeLinecap="round" />
+    </g>
+  ),
+  randomize: (
+    <>
+      <rect x="4.5" y="4.5" width="15" height="15" rx="3.5" fill="#fff7df" stroke={INK} strokeWidth="1.65" />
+      <circle cx="8.8" cy="8.8" r="1.4" fill="#ff8fa3" />
+      <circle cx="15.2" cy="8.8" r="1.4" fill="#6fd0b4" />
+      <circle cx="12" cy="12" r="1.45" fill="#ffd166" stroke={INK} strokeWidth="0.6" />
+      <circle cx="8.8" cy="15.2" r="1.4" fill="#7cc6fe" />
+      <circle cx="15.2" cy="15.2" r="1.4" fill="#a59cf5" />
     </>
   ),
 };
