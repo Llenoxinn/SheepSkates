@@ -7,26 +7,23 @@ import { BrandLogo } from './BrandLogo';
 
 function FallbackHeroSheep() {
   return (
-    <svg viewBox="0 0 280 280" className="ss-hero-fallback" role="img" aria-label="Illustrated wooly sheep on a coral skateboard">
-      <rect width="280" height="280" fill="#f6f1e7" />
-      <path d="M62 222 Q140 206 218 222" stroke="#7cb547" strokeWidth="14" strokeLinecap="round" fill="none" />
-      <circle cx="96" cy="212" r="4" fill="#ffd166" />
-      <circle cx="188" cy="213" r="4" fill="#ffd166" />
-      <g transform="rotate(-14 146 184)">
-        <rect x="74" y="176" width="144" height="16" rx="8" fill="#ff8fa3" stroke="#2b2622" strokeWidth="4" />
-        <circle cx="104" cy="200" r="10" fill="#f5ecd6" stroke="#2b2622" strokeWidth="3.5" />
-        <circle cx="188" cy="200" r="10" fill="#f5ecd6" stroke="#2b2622" strokeWidth="3.5" />
+    <svg viewBox="0 0 360 270" className="ss-hero-fallback" role="img" aria-label="Editorial gouache illustration of a sheep catching air off a mint quarter-pipe">
+      <rect width="360" height="270" fill="#8fc3ea" />
+      <path d="M0 198 Q110 176 220 194 T360 184 L360 270 L0 270 Z" fill="#7cb547" />
+      <rect x="0" y="210" width="360" height="60" fill="#e8dfd0" />
+      <path d="M90 270 Q195 245 258 174 L268 178 L280 270 Z" fill="#9fd8c6" stroke="#2b2622" strokeWidth="3" strokeLinejoin="round" />
+      <line x1="86" y1="268" x2="262" y2="174" stroke="#c9ced8" strokeWidth="7" strokeLinecap="round" />
+      <g transform="rotate(-18 190 132)">
+        <rect x="116" y="138" width="146" height="14" rx="7" fill="#ff8c7a" stroke="#2b2622" strokeWidth="3.5" />
+        <circle cx="146" cy="158" r="9" fill="#f5ecd6" stroke="#2b2622" strokeWidth="3" />
+        <circle cx="232" cy="158" r="9" fill="#f5ecd6" stroke="#2b2622" strokeWidth="3" />
       </g>
-      <circle cx="128" cy="126" r="46" fill="#faf4e8" stroke="#2b2622" strokeWidth="4" />
-      <ellipse cx="164" cy="120" rx="28" ry="26" fill="#4a3b35" stroke="#2b2622" strokeWidth="4" />
-      <circle cx="156" cy="116" r="5" fill="#fff" />
-      <circle cx="174" cy="116" r="5" fill="#fff" />
-      <circle cx="157" cy="117" r="2.6" fill="#141010" />
-      <circle cx="175" cy="117" r="2.6" fill="#141010" />
-      <ellipse cx="147" cy="128" rx="6" ry="3.8" fill="#ff9fb4" />
-      <ellipse cx="180" cy="128" rx="6" ry="3.8" fill="#ff9fb4" />
-      <path d="M138 98c2-18 14-28 28-28s25 10 26 28Z" fill="#6fd0b4" stroke="#2b2622" strokeWidth="4" />
-      <circle cx="166" cy="64" r="10" fill="#bff0df" stroke="#2b2622" strokeWidth="3.5" />
+      <circle cx="176" cy="96" r="42" fill="#faf4e8" stroke="#2b2622" strokeWidth="3.5" />
+      <ellipse cx="220" cy="86" rx="22" ry="20" fill="#3a2f2b" stroke="#2b2622" strokeWidth="3.5" />
+      <circle cx="218" cy="82" r="2.6" fill="#fffdf9" opacity="0.2" />
+      <circle cx="215" cy="83" r="2.2" fill="#141010" />
+      <circle cx="230" cy="83" r="2.2" fill="#141010" />
+      <path d="M196 68c2-15 12-24 24-24s22 9 23 24Z" fill="#ffd166" stroke="#2b2622" strokeWidth="3.5" />
     </svg>
   );
 }
@@ -129,15 +126,13 @@ export function TitleScreen() {
 
         <div className="ss-title-art ss-stagger s2">
           <div className="ss-hero-plate">
-            <span className="ss-tape tl" aria-hidden="true" />
-            <span className="ss-tape br" aria-hidden="true" />
             <div className="ss-hero-matte">
               {imgFailed ? (
                 <FallbackHeroSheep />
               ) : (
                 <img
                   src={`${import.meta.env.BASE_URL}art/title-sheep.png`}
-                  alt="Illustrated wooly sheep in a mint beanie doing an ollie on a pastel coral skateboard"
+                  alt="Editorial gouache key art of a deadpan wooly sheep in a mustard beanie catching air off a mint quarter-pipe on a coral skateboard"
                   onError={() => setImgFailed(true)}
                 />
               )}
