@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { BOARD_ARTS, type BoardArt } from './boardArt';
 import { BOARD_STYLES, populateBoardGroup, type BoardStyle } from './boards';
 import { BOARD_COLORS, BOUNDS, GRAVITY, isOnPlaza, NAMES, RAIL, RAIL_Y, SHEEP_SCALE, type Obstacle } from './config';
 import { clamp, damp, dampA, easeInBack, easeOutBack, pick, rand, rng, wrapA } from './math';
@@ -160,12 +161,12 @@ const _v = new THREE.Vector3();
 
 let nextId = 1;
 
-export type SheepOpts = { x?: number; z?: number; heading?: number; state?: SheepState; color?: number; hat?: boolean; name?: string; boardStyle?: BoardStyle };
+export type SheepOpts = { x?: number; z?: number; heading?: number; state?: SheepState; color?: number; hat?: boolean; name?: string; boardStyle?: BoardStyle; boardArt?: BoardArt };
 
 export class Sheep {
   readonly id = nextId++;
   readonly name: string; readonly color: number; readonly hat: boolean;
-  boardStyle: BoardStyle; private wheelRadius = 0.056;
+  boardStyle: BoardStyle; boardArt: BoardArt; private wheelRadius = 0.056;
   readonly voicePitch: number; readonly voiceVib: number; readonly voiceDur: number;
   readonly root = new THREE.Group(); readonly air = new THREE.Group();
   private lean = new THREE.Group(); private board = new THREE.Group(); private rider = new THREE.Group();
@@ -191,6 +192,7 @@ export class Sheep {
     this.color = o.color ?? ((Math.random() * BOARD_COLORS.length) | 0);
     this.hat = o.hat ?? Math.random() < 0.35;
     this.boardStyle = o.boardStyle ?? BOARD_STYLES[(this.id - 1) % BOARD_STYLES.length]!;
+    this.boardArt = o.boardArt ?? BOARD_ARTS[((this.id - 1) * 5) % BOARD_ARTS.length]!;
     this.voicePitch = rand(0.82, 1.24);
     this.voiceVib = rand(6.2, 9.2);
     this.voiceDur = rand(0.42, 0.62);
@@ -201,7 +203,7 @@ export class Sheep {
 
     // board (pivot at deck centre so kickflips spin around the long axis)
     this.board.position.y = 0.16;
-    this.wheelRadius = populateBoardGroup(this.board, this.boardStyle, this.color, this.wheels);
+    this.wheelRadius = populateBoardGroup(this.board, this.boardStyle, this.boardArt, this.wheels);
 
     // rider (pivot at deck top so squash keeps hooves planted)
     this.rider.position.y = 0.186;
@@ -238,11 +240,15 @@ export class Sheep {
   get pos() { return this.root.position; }
 
   /* ---------------- state + tricks ---------------- */
-  setBoardStyle(style: BoardStyle) {
-    if (this.boardStyle === style) return;
+  setBoard(style: BoardStyle, art: BoardArt) {
+    if (this.boardStyle === style && this.boardArt === art) return;
     this.boardStyle = style;
-    this.wheelRadius = populateBoardGroup(this.board, style, this.color, this.wheels);
+    this.boardArt = art;
+    this.wheelRadius = populateBoardGroup(this.board, style, art, this.wheels);
     this.sqV += 5.5;
+  }
+  setBoardStyle(style: BoardStyle) {
+    this.setBoard(style, this.boardArt);
   }
   setState(st: SheepState, w?: SheepWorld) {
     if (this.state === 'grind' && st !== 'grind') this.exitGrind();

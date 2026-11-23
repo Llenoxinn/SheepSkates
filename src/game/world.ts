@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { useAppPhase } from './appPhase';
+import { BOARD_ARTS, BOARD_ART_SPECS, type BoardArt } from './boardArt';
 import { BOARD_SPECS, BOARD_STYLES, type BoardStyle } from './boards';
 import { BOARD_COLORS, BOUNDS, BUSHES, checkPlacement, isOnPlaza, PLAZA_TOP, POND, snapBuildCoord, type Obstacle, type PlacementCheck } from './config';
 import { clamp, damp, dampA, pick, rand, wrapA } from './math';
@@ -187,15 +188,15 @@ class World implements SheepWorld {
   }
   private seedFlock() {
     const seeds: ConstructorParameters<typeof Sheep>[0][] = [
-      { x: 0, z: 1.5, state: 'cruise', color: 0, boardStyle: 'street' },
-      { x: 4, z: -1, state: 'cruise', color: 1, boardStyle: 'cruiser' },
-      { x: 5, z: 3, state: 'cruise', color: 2, boardStyle: 'oldschool' },
-      { x: -1.5, z: -3.6, state: 'grind', color: 3, boardStyle: 'street' },
-      { x: 2, z: -0.5, state: 'cruise', color: 4, boardStyle: 'pintail' },
-      { x: -8, z: -2.4, heading: 1.2, state: 'idle', color: 5, boardStyle: 'pintail' },
-      { x: -6.6, z: 5.6, heading: -2.4, state: 'idle', color: 6, boardStyle: 'cruiser' },
-      { x: 9.6, z: 5.0, heading: 3.6, state: 'idle', color: 2, boardStyle: 'oldschool' },
-      { x: 10, z: -3, heading: -0.8, state: 'idle', color: 0, boardStyle: 'street' },
+      { x: 0, z: 1.5, state: 'cruise', color: 0, boardStyle: 'street', boardArt: 'baa' },
+      { x: 4, z: -1, state: 'cruise', color: 1, boardStyle: 'cruiser', boardArt: 'daisy' },
+      { x: 5, z: 3, state: 'cruise', color: 2, boardStyle: 'oldschool', boardArt: 'flames' },
+      { x: -1.5, z: -3.6, state: 'grind', color: 3, boardStyle: 'street', boardArt: 'checker' },
+      { x: 2, z: -0.5, state: 'cruise', color: 4, boardStyle: 'pintail', boardArt: 'sunset' },
+      { x: -8, z: -2.4, heading: 1.2, state: 'idle', color: 5, boardStyle: 'pintail', boardArt: 'sakura' },
+      { x: -6.6, z: 5.6, heading: -2.4, state: 'idle', color: 6, boardStyle: 'cruiser', boardArt: 'gingham' },
+      { x: 9.6, z: 5.0, heading: 3.6, state: 'idle', color: 2, boardStyle: 'oldschool', boardArt: 'cloud' },
+      { x: 10, z: -3, heading: -0.8, state: 'idle', color: 0, boardStyle: 'street', boardArt: 'daisy' },
     ];
     for (const o of seeds) { const s = new Sheep({ ...o, state: 'idle' }); this.attach(s); s.setState(o!.state ?? 'idle', this); }
   }
@@ -478,7 +479,7 @@ class World implements SheepWorld {
   syncUI() {
     const s = this.selected, p = this.selectedProp;
     const selected: SelectedEntity | null = s
-      ? { kind: 'sheep', id: s.id, name: s.name, state: s.state === 'goto' ? s.after : s.state, boardStyle: s.boardStyle }
+      ? { kind: 'sheep', id: s.id, name: s.name, state: s.state === 'goto' ? s.after : s.state, boardStyle: s.boardStyle, boardArt: s.boardArt }
       : p
         ? { kind: 'prop', id: p.id, propKind: p.kind, name: p.label, rotDeg: Math.round(((wrapA(p.rotY) * 180) / Math.PI + 360) % 360) }
         : null;
@@ -790,22 +791,37 @@ class World implements SheepWorld {
     this.cancelPlacement();
   }
 
-  setBoardStyle(style: BoardStyle) {
-    const s = this.selected; if (!s || s.boardStyle === style) return;
-    const prev = s.boardStyle;
+  setBoard(style: BoardStyle, art: BoardArt) {
+    const s = this.selected; if (!s || (s.boardStyle === style && s.boardArt === art)) return;
+    const prevStyle = s.boardStyle, prevArt = s.boardArt;
     Sfx.pop();
     this.commit({
       do: () => {
-        s.setBoardStyle(style);
+        s.setBoard(style, art);
         this.puff(s.pos, 4, 0.9, 0.7);
         this.syncUI();
       },
       undo: () => {
-        s.setBoardStyle(prev);
+        s.setBoard(prevStyle, prevArt);
         this.puff(s.pos, 4, 0.9, 0.7);
         this.syncUI();
       },
     });
+  }
+  setBoardStyle(style: BoardStyle) {
+    const s = this.selected; if (s) this.setBoard(style, s.boardArt);
+  }
+  setBoardArt(art: BoardArt) {
+    const s = this.selected; if (s) this.setBoard(s.boardStyle, art);
+  }
+  randomizeBoard() {
+    const s = this.selected; if (!s) return;
+    let style = s.boardStyle, art = s.boardArt;
+    for (let i = 0; i < 8 && style === s.boardStyle && art === s.boardArt; i++) {
+      style = BOARD_STYLES[(Math.random() * BOARD_STYLES.length) | 0]!;
+      art = BOARD_ARTS[(Math.random() * BOARD_ARTS.length) | 0]!;
+    }
+    this.setBoard(style, art);
   }
   cycleBoardStyle() {
     const s = this.selected; if (!s) return;
@@ -851,7 +867,7 @@ class World implements SheepWorld {
     const a = o.heading + Math.PI / 2;
     const x = clamp(o.pos.x + Math.sin(a) * 1.3, -11.5, 11.5), z = clamp(o.pos.z + Math.cos(a) * 1.3, -7.6, 7.6);
     const st: SheepState = o.state === 'grind' ? 'cruise' : o.state === 'ride' || o.state === 'goto' ? 'idle' : o.state;
-    const c = new Sheep({ x, z, heading: o.heading, state: st, color: o.color, hat: o.hat, boardStyle: o.boardStyle });
+    const c = new Sheep({ x, z, heading: o.heading, state: st, color: o.color, hat: o.hat, boardStyle: o.boardStyle, boardArt: o.boardArt });
     c.spawnPop();
     this.commit({ do: () => { this.addSheep(c); Sfx.pop(); this.puff(c.pos, 6, 1.2, 1); this.select(c); }, undo: () => this.removeSheep(c) });
   }
@@ -895,6 +911,7 @@ class World implements SheepWorld {
       hat: s.hat,
       name: s.name,
       boardStyle: s.boardStyle,
+      boardArt: s.boardArt,
     }));
     return { version: 1, props, flock };
   }
@@ -925,7 +942,7 @@ class World implements SheepWorld {
       this.dying.length = 0;
       this.hitTargets.length = 0;
       for (const sd of data.flock) {
-        const s = new Sheep({ x: sd.x, z: sd.z, heading: sd.heading, state: 'idle', color: sd.color, hat: sd.hat, name: sd.name, boardStyle: sd.boardStyle });
+        const s = new Sheep({ x: sd.x, z: sd.z, heading: sd.heading, state: 'idle', color: sd.color, hat: sd.hat, name: sd.name, boardStyle: sd.boardStyle, boardArt: sd.boardArt });
         this.attach(s);
         s.setState(sd.state ?? 'idle', this);
       }
@@ -1193,7 +1210,7 @@ class World implements SheepWorld {
     sel.style.transform = `translate(${x0}px, ${y0}px)`; sel.style.width = `${x1 - x0}px`; sel.style.height = `${y1 - y0}px`;
     const dist = this.camera.position.distanceTo(s ? s.pos : p!.root.position);
     const label = s
-      ? `${s.name} · ${BOARD_SPECS[s.boardStyle].label} · ${BOARD_SPECS[s.boardStyle].dimsLabel} · ${dist.toFixed(0)} m away`
+      ? `${s.name} · ${BOARD_SPECS[s.boardStyle].label} · ${BOARD_ART_SPECS[s.boardArt].label} · ${dist.toFixed(0)} m away`
       : `${p!.label} · ${p!.dimsLabel} · ${dist.toFixed(0)} m away`;
     if (tag.textContent !== label) tag.textContent = label;
     const tw = tag.offsetWidth;

@@ -1,9 +1,8 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { BOARD_COLORS } from './config';
+import { BOARD_ART_SPECS, getDeckArtMat, getGripArtMat, getPlyArtMat, type BoardArt } from './boardArt';
 import { clamp } from './math';
-import { baked } from './textures';
 
 export type BoardStyle = 'street' | 'cruiser' | 'oldschool' | 'pintail';
 
@@ -222,7 +221,7 @@ function pushTri(
   uv.push(au, av, bu, bv, cu, cv);
 }
 
-function buildLoftedBoardGeo(p: DeckProfile, yBot: number, yTop: number, bevel: number, withPlyGroup: boolean): THREE.BufferGeometry {
+function buildLoftedBoardGeo(p: DeckProfile, yBot: number, yTop: number, bevel: number, groupMode: 'deck' | 'grip'): THREE.BufferGeometry {
   const pos: number[] = [], norm: number[] = [], uv: number[] = [];
   const slope = (z: number) => (p.kickY(Math.min(p.zMax, z + 0.002)) - p.kickY(Math.max(p.zMin, z - 0.002))) / 0.004;
   const capNorm = (z: number, up: number): [number, number, number] => {
@@ -230,8 +229,14 @@ function buildLoftedBoardGeo(p: DeckProfile, yBot: number, yTop: number, bevel: 
     return [0, up / len, (-up * sl) / len];
   };
   const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+  let maxW = 0.01;
+  for (const z of p.zStations) maxW = Math.max(maxW, p.outerW(z));
+  const zSpan = Math.max(1e-4, p.zMax - p.zMin);
+  const uTop = (x: number) => clamp(0.5 - x / (2 * maxW), 0, 1);
+  const uBot = (x: number) => clamp(0.5 + x / (2 * maxW), 0, 1);
+  const vZ = (z: number) => clamp((z - p.zMin) / zSpan, 0, 1);
 
-  // 1. Top + bottom caps (group 0)
+  // 1a. Top cap (yTop, +Y normal — group 0 on both deck and grip)
   for (let i = 0; i < p.zStations.length - 1; i++) {
     const z0 = p.zStations[i]!, z1 = p.zStations[i + 1]!;
     const out0 = p.outerW(z0), in0 = p.innerW(z0), out1 = p.outerW(z1), in1 = p.innerW(z1);
@@ -243,11 +248,27 @@ function buildLoftedBoardGeo(p: DeckProfile, yBot: number, yTop: number, bevel: 
       for (let j = 0; j < 2; j++) {
         const t0 = j * 0.5, t1 = (j + 1) * 0.5;
         const ax = lerp(l0, r0, t0), bx = lerp(l0, r0, t1), dx = lerp(l1, r1, t0), cx = lerp(l1, r1, t1);
-        const u = (x: number) => x * 1.4 + 0.5, v = (z: number) => z * 0.8 + 0.5;
-        pushTri(pos, norm, uv, ax, yTop + k0, z0, tnx0, tny0, tnz0, u(ax), v(z0), dx, yTop + k1, z1, tnx1, tny1, tnz1, u(dx), v(z1), cx, yTop + k1, z1, tnx1, tny1, tnz1, u(cx), v(z1));
-        pushTri(pos, norm, uv, ax, yTop + k0, z0, tnx0, tny0, tnz0, u(ax), v(z0), cx, yTop + k1, z1, tnx1, tny1, tnz1, u(cx), v(z1), bx, yTop + k0, z0, tnx0, tny0, tnz0, u(bx), v(z0));
-        pushTri(pos, norm, uv, ax, yBot + k0, z0, -tnx0, -tny0, -tnz0, u(ax), v(z0), bx, yBot + k0, z0, -tnx0, -tny0, -tnz0, u(bx), v(z0), cx, yBot + k1, z1, -tnx1, -tny1, -tnz1, u(cx), v(z1));
-        pushTri(pos, norm, uv, ax, yBot + k0, z0, -tnx0, -tny0, -tnz0, u(ax), v(z0), cx, yBot + k1, z1, -tnx1, -tny1, -tnz1, u(cx), v(z1), dx, yBot + k1, z1, -tnx1, -tny1, -tnz1, u(dx), v(z1));
+        pushTri(pos, norm, uv, ax, yTop + k0, z0, tnx0, tny0, tnz0, uTop(ax), vZ(z0), dx, yTop + k1, z1, tnx1, tny1, tnz1, uTop(dx), vZ(z1), cx, yTop + k1, z1, tnx1, tny1, tnz1, uTop(cx), vZ(z1));
+        pushTri(pos, norm, uv, ax, yTop + k0, z0, tnx0, tny0, tnz0, uTop(ax), vZ(z0), cx, yTop + k1, z1, tnx1, tny1, tnz1, uTop(cx), vZ(z1), bx, yTop + k0, z0, tnx0, tny0, tnz0, uTop(bx), vZ(z0));
+      }
+    }
+  }
+  const topVerts = pos.length / 3;
+
+  // 1b. Bottom cap (yBot, -Y normal — underside artwork)
+  for (let i = 0; i < p.zStations.length - 1; i++) {
+    const z0 = p.zStations[i]!, z1 = p.zStations[i + 1]!;
+    const out0 = p.outerW(z0), in0 = p.innerW(z0), out1 = p.outerW(z1), in1 = p.innerW(z1);
+    const k0 = p.kickY(z0), k1 = p.kickY(z1);
+    const [tnx0, tny0, tnz0] = capNorm(z0, 1), [tnx1, tny1, tnz1] = capNorm(z1, 1);
+    const halves: readonly [number, number, number, number][] = [[-out0, -in0, -out1, -in1], [in0, out0, in1, out1]];
+    for (const [l0, r0, l1, r1] of halves) {
+      if (Math.max(r0 - l0, r1 - l1) <= 1e-6) continue;
+      for (let j = 0; j < 2; j++) {
+        const t0 = j * 0.5, t1 = (j + 1) * 0.5;
+        const ax = lerp(l0, r0, t0), bx = lerp(l0, r0, t1), dx = lerp(l1, r1, t0), cx = lerp(l1, r1, t1);
+        pushTri(pos, norm, uv, ax, yBot + k0, z0, -tnx0, -tny0, -tnz0, uBot(ax), vZ(z0), bx, yBot + k0, z0, -tnx0, -tny0, -tnz0, uBot(bx), vZ(z0), cx, yBot + k1, z1, -tnx1, -tny1, -tnz1, uBot(cx), vZ(z1));
+        pushTri(pos, norm, uv, ax, yBot + k0, z0, -tnx0, -tny0, -tnz0, uBot(ax), vZ(z0), cx, yBot + k1, z1, -tnx1, -tny1, -tnz1, uBot(cx), vZ(z1), dx, yBot + k1, z1, -tnx1, -tny1, -tnz1, uBot(dx), vZ(z1));
       }
     }
   }
@@ -316,10 +337,13 @@ function buildLoftedBoardGeo(p: DeckProfile, yBot: number, yTop: number, bevel: 
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('normal', new THREE.Float32BufferAttribute(norm, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-  const wallVerts = pos.length / 3 - capVerts;
-  if (withPlyGroup) {
+  const totalVerts = pos.length / 3;
+  if (groupMode === 'deck') {
     g.addGroup(0, capVerts, 0);
-    g.addGroup(capVerts, wallVerts, 1);
+    g.addGroup(capVerts, totalVerts - capVerts, 1);
+  } else {
+    g.addGroup(0, topVerts, 0);
+    g.addGroup(topVerts, totalVerts - topVerts, 1);
   }
   g.computeBoundingSphere();
   return g;
@@ -441,47 +465,14 @@ function buildStyleGeos(style: BoardStyle) {
   const prof = makeDeckProfile(style);
   const gripProf = makeGripProfile(style, prof);
   return {
-    deck: buildLoftedBoardGeo(prof, -0.025, 0.021, 0.005, true),
-    grip: buildLoftedBoardGeo(gripProf, 0.02, 0.026, 0.002, false),
+    deck: buildLoftedBoardGeo(prof, -0.025, 0.021, 0.005, 'deck'),
+    grip: buildLoftedBoardGeo(gripProf, 0.02, 0.026, 0.002, 'grip'),
     truck: buildTruckGeo(spec),
     wheel: buildWheelGeo(spec.wheelRadius, spec.wheelWidth),
   };
 }
 
-function makePlyTexture(colorIdx: number): THREE.CanvasTexture {
-  return baked(`board-ply-${colorIdx}`, () => {
-    const c = document.createElement('canvas');
-    c.width = 128; c.height = 64;
-    const ctx = c.getContext('2d')!;
-    const base = new THREE.Color(BOARD_COLORS[colorIdx]!);
-    const accent = new THREE.Color(BOARD_COLORS[(colorIdx + 2) % BOARD_COLORS.length]!);
-    const dyed = base.clone().offsetHSL(0, 0.14, -0.08);
-    const bands = [
-      { y: 0, h: 9, col: `#${base.getHexString()}` },
-      { y: 9, h: 8, col: '#f4e1c4' },
-      { y: 17, h: 9, col: '#d7b07e' },
-      { y: 26, h: 12, col: `#${dyed.getHexString()}` },
-      { y: 38, h: 9, col: '#d7b07e' },
-      { y: 47, h: 8, col: '#f4e1c4' },
-      { y: 55, h: 9, col: `#${accent.getHexString()}` },
-    ];
-    for (const b of bands) { ctx.fillStyle = b.col; ctx.fillRect(0, b.y, 128, b.h); }
-    ctx.fillStyle = 'rgba(68,44,24,0.28)';
-    for (let i = 1; i < bands.length; i++) ctx.fillRect(0, bands[i]!.y, 128, 1);
-    ctx.fillStyle = 'rgba(90,56,28,0.08)';
-    for (let i = 0; i < 18; i++) ctx.fillRect((i * 23) % 128, (i * 11) % 64, 28, 1);
-    const t = new THREE.CanvasTexture(c);
-    t.colorSpace = THREE.SRGBColorSpace;
-    t.wrapS = THREE.RepeatWrapping;
-    t.wrapT = THREE.ClampToEdgeWrapping;
-    t.anisotropy = 4;
-    return t;
-  });
-}
-
-const DECK_MATS = BOARD_COLORS.map(c => new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.45, clearcoat: 0.6, clearcoatRoughness: 0.3 }));
-const PLY_MATS = BOARD_COLORS.map((_, i) => new THREE.MeshPhysicalMaterial({ map: makePlyTexture(i), roughness: 0.46, clearcoat: 0.45, clearcoatRoughness: 0.32 }));
-const GRIP_MAT = new THREE.MeshStandardMaterial({ color: '#3b3944', roughness: 0.95 });
+const GRIP_EDGE_MAT = new THREE.MeshStandardMaterial({ color: '#32303a', roughness: 0.95 });
 const BUSHING_MAT = new THREE.MeshStandardMaterial({ color: '#45404b', roughness: 0.78 });
 
 const TRUCK_METAL_MATS = {
@@ -492,39 +483,48 @@ const TRUCK_METAL_MATS = {
   cruiserCoral: new THREE.MeshPhysicalMaterial({ color: '#ff9886', roughness: 0.36, metalness: 0.22, clearcoat: 0.35 }),
 };
 
-function truckMatFor(style: BoardStyle, colorIdx: number): THREE.Material {
-  if (style === 'cruiser') return colorIdx % 2 === 0 ? TRUCK_METAL_MATS.cruiserMint : TRUCK_METAL_MATS.cruiserCoral;
+function truckMatFor(style: BoardStyle, art: BoardArt): THREE.Material {
+  if (style === 'cruiser') return BOARD_ART_SPECS[art].cruiserTruck === 'mint' ? TRUCK_METAL_MATS.cruiserMint : TRUCK_METAL_MATS.cruiserCoral;
   return TRUCK_METAL_MATS[style];
 }
 
-const WHEEL_MATS: Record<BoardStyle, THREE.MeshStandardMaterial[][]> = (() => {
-  const mix = (hex: string, target: string, k: number) => `#${new THREE.Color(hex).lerp(new THREE.Color(target), k).getHexString()}`;
+const wheelMatPool = new Map<string, THREE.MeshStandardMaterial[]>();
+const _mixCol = new THREE.Color();
+const _targetCol = new THREE.Color();
+function getWheelMats(style: BoardStyle, art: BoardArt): THREE.MeshStandardMaterial[] {
+  const key = `${style}:${art}`;
+  const hit = wheelMatPool.get(key);
+  if (hit) return hit;
+  const s = BOARD_ART_SPECS[art];
+  const mix = (hex: string, target: string, k: number) => `#${_mixCol.set(hex).lerp(_targetCol.set(target), k).getHexString()}`;
   const mk = (tire: string, hub: string, dots: string) => [
     new THREE.MeshStandardMaterial({ color: tire, roughness: 0.44 }),
     new THREE.MeshStandardMaterial({ color: hub, roughness: 0.38, metalness: 0.15 }),
     new THREE.MeshStandardMaterial({ color: dots, roughness: 0.35, metalness: 0.2 }),
   ];
-  return {
-    street: BOARD_COLORS.map(c => mk('#f7efe0', c, '#2b262a')),
-    cruiser: BOARD_COLORS.map((_, i) => mk(mix(BOARD_COLORS[(i + 2) % BOARD_COLORS.length]!, '#fbf5e8', 0.35), '#fbf5e8', '#3a2f2b')),
-    oldschool: BOARD_COLORS.map(() => mk('#f0e7d4', '#302c35', '#ffd666')),
-    pintail: BOARD_COLORS.map((_, i) => mk(mix(BOARD_COLORS[(i + 5) % BOARD_COLORS.length]!, '#f4cf86', 0.28), '#faf2e2', '#4a3525')),
-  };
-})();
+  const mats = style === 'street'
+    ? mk('#f7efe0', s.baseHex, '#2b262a')
+    : style === 'cruiser'
+      ? mk(s.wheelTint, '#fbf5e8', '#3a2f2b')
+      : style === 'oldschool'
+        ? mk('#f0e7d4', '#302c35', s.accentHex)
+        : mk(mix(s.wheelTint, '#f4cf86', 0.35), '#faf2e2', '#4a3525');
+  wheelMatPool.set(key, mats);
+  return mats;
+}
 
 /** Populates a board Group from pooled geometries and materials. Returns wheel radius. */
-export function populateBoardGroup(board: THREE.Group, style: BoardStyle, colorIdx: number, wheelsOut: THREE.Mesh[]): number {
+export function populateBoardGroup(board: THREE.Group, style: BoardStyle, art: BoardArt, wheelsOut: THREE.Mesh[]): number {
   const spec = BOARD_SPECS[style];
   const geo = BOARD_GEO[style];
-  const ci = ((colorIdx % BOARD_COLORS.length) + BOARD_COLORS.length) % BOARD_COLORS.length;
   board.clear();
   wheelsOut.length = 0;
 
-  board.add(new THREE.Mesh(geo.deck, [DECK_MATS[ci]!, PLY_MATS[ci]!]));
-  board.add(new THREE.Mesh(geo.grip, GRIP_MAT));
+  board.add(new THREE.Mesh(geo.deck, [getDeckArtMat(art), getPlyArtMat(art)]));
+  board.add(new THREE.Mesh(geo.grip, [getGripArtMat(art), GRIP_EDGE_MAT]));
 
-  const truckMats = [truckMatFor(style, ci), BUSHING_MAT];
-  const wheelMats = WHEEL_MATS[style][ci]!;
+  const truckMats = [truckMatFor(style, art), BUSHING_MAT];
+  const wheelMats = getWheelMats(style, art);
   spec.truckZ.forEach((zz, idx) => {
     const truck = new THREE.Mesh(geo.truck, truckMats);
     truck.position.set(0, 0, zz);

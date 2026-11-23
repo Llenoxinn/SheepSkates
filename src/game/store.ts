@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { BoardArt } from './boardArt';
 import type { BoardStyle } from './boards';
 import type { PlacementCheck } from './config';
 import type { PropKind } from './props';
@@ -9,7 +10,7 @@ export type TrickType = 'ollie' | 'kickflip' | 'spin';
 export type GamePhase = 'title' | 'playing';
 
 export type SelectedEntity =
-  | { kind: 'sheep'; id: number; name: string; state: SheepState; boardStyle: BoardStyle }
+  | { kind: 'sheep'; id: number; name: string; state: SheepState; boardStyle: BoardStyle; boardArt: BoardArt }
   | { kind: 'prop'; id: number; propKind: PropKind; name: string; rotDeg: number };
 
 /** UI-facing state only. Per-frame values (positions, overlay boxes) never go through React. */

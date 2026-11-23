@@ -1,3 +1,4 @@
+import { isBoardArt, type BoardArt } from './boardArt';
 import { isBoardStyle, type BoardStyle } from './boards';
 import { BOARD_COLORS, BOUNDS } from './config';
 import { clamp, wrapA } from './math';
@@ -15,6 +16,7 @@ export type SerializedSheep = {
   hat?: boolean;
   name?: string;
   boardStyle?: BoardStyle;
+  boardArt?: BoardArt;
 };
 
 export type ParkData = {
@@ -103,6 +105,7 @@ export function validateParkData(raw: unknown): ParkData {
       }
       if (typeof s.hat === 'boolean') out.hat = s.hat;
       if (isBoardStyle(s.boardStyle)) out.boardStyle = s.boardStyle;
+      if (isBoardArt(s.boardArt)) out.boardArt = s.boardArt;
       const name = sanitizeName(s.name);
       if (name) out.name = name;
       return out;
@@ -115,7 +118,7 @@ export function validateParkData(raw: unknown): ParkData {
 type CompactWire = {
   v: 1;
   p: { k: PropKind; x: number; z: number; r?: number; s?: number; l?: number; c?: string }[];
-  f?: { x: number; z: number; h?: number; s?: SheepState; c?: number; t?: boolean; n?: string; b?: BoardStyle }[];
+  f?: { x: number; z: number; h?: number; s?: SheepState; c?: number; t?: boolean; n?: string; b?: BoardStyle; a?: BoardArt }[];
 };
 
 function expandWire(raw: unknown): unknown {
@@ -144,6 +147,7 @@ function expandWire(raw: unknown): unknown {
               ...(s.t !== undefined ? { hat: s.t } : {}),
               ...(s.n !== undefined ? { name: s.n } : {}),
               ...(s.b !== undefined ? { boardStyle: s.b } : {}),
+              ...(s.a !== undefined ? { boardArt: s.a } : {}),
             })),
           }
         : {}),
@@ -191,6 +195,7 @@ export function encodeParkToParam(data: ParkData): string {
             ...(s.hat !== undefined ? { t: s.hat } : {}),
             ...(s.name ? { n: s.name } : {}),
             ...(s.boardStyle ? { b: s.boardStyle } : {}),
+            ...(s.boardArt ? { a: s.boardArt } : {}),
           })),
         }
       : {}),
