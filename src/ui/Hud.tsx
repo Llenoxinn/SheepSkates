@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAppPhase } from '../game/appPhase';
 import { BOARD_SPECS, BOARD_STYLES, type BoardStyle } from '../game/boards';
-import type { PropKind } from '../game/props';
+import { PROP_SPECS, type PropKind } from '../game/props';
 import { Sfx } from '../game/sfx';
 import { useUI, type SheepState, type TrickType } from '../game/store';
 import { overlay, world } from '../game/world';
@@ -104,10 +104,10 @@ function Toolbar({ live }: { live: boolean }) {
             <ArtIcon name="move" size={16} className="btn-ic" />
             <span>Move</span>
           </button>
-          <button className="ic" data-tip="Rotate -45° · Q" aria-label="Rotate left 45 degrees" onClick={() => world.rotateProp(-Math.PI / 4)}>
+          <button className="ic" data-tip="Rotate -45° · Q" aria-label="Rotate left 45 degrees" onClick={() => world.rotatePlacement(-Math.PI / 4)}>
             <ArtIcon name="rotL" size={17} />
           </button>
-          <button className="ic" data-tip="Rotate +45° · R" aria-label="Rotate right 45 degrees" onClick={() => world.rotateProp(Math.PI / 4)}>
+          <button className="ic" data-tip="Rotate +45° · R" aria-label="Rotate right 45 degrees" onClick={() => world.rotatePlacement(Math.PI / 4)}>
             <ArtIcon name="rotR" size={17} />
           </button>
         </>
@@ -182,33 +182,116 @@ function Toolbar({ live }: { live: boolean }) {
 function BuildPalette({ live }: { live: boolean }) {
   const buildMode = useUI(s => s.buildMode);
   const draggingPalette = useUI(s => s.draggingPalette);
+  const placingKind = useUI(s => s.placingKind);
+  const placingRotDeg = useUI(s => s.placingRotDeg);
+  const placingValid = useUI(s => s.placingValid);
+  const placingReason = useUI(s => s.placingReason);
+  const gridSnap = useUI(s => s.gridSnap);
+  const moveMode = useUI(s => s.moveMode);
+  const selected = useUI(s => s.selected);
   const canUndo = useUI(s => s.canUndo), canRedo = useUI(s => s.canRedo);
   const open = live && buildMode;
+  const propSel = selected?.kind === 'prop' ? selected : null;
+  const showStrip = live && (placingKind !== null || (moveMode && propSel !== null));
+  const statusText = !placingValid
+    ? (placingReason === 'pond' ? 'Pond — choose dry land' : 'Outside island bounds')
+    : placingKind
+      ? `Placing ${PROP_SPECS[placingKind].label} · ${placingRotDeg}°`
+      : propSel
+        ? `Moving ${propSel.name} · ${propSel.rotDeg}°`
+        : '';
+
   return (
-    <div className={`palette ${open ? 'on' : ''}`} role="toolbar" aria-label="Park piece palette" aria-hidden={!open}>
-      {PALETTE_PIECES.map(p => (
-        <button
-          key={p.kind}
-          className={`palette-item ${draggingPalette === p.kind ? 'dragging' : ''}`}
-          title={`Drag onto island or click to place ${p.label}`}
-          aria-label={`Place ${p.label}`}
-          tabIndex={open ? 0 : -1}
-          onPointerDown={e => {
-            if (e.button !== 0 || !open) return;
-            e.preventDefault();
-            Sfx.unlock();
-            world.beginPaletteDrag(p.kind);
-          }}
+    <>
+      {showStrip && (
+        <div
+          className={`build-strip on ${open ? '' : 'low'}`}
+          role="toolbar"
+          aria-label="Placement controls"
+          onPointerDown={() => Sfx.unlock()}
         >
-          <ArtIcon name={p.icon} size={21} />
-          <span>{p.label}</span>
-        </button>
-      ))}
-      <span className="psep" />
-      <button className="palette-act" title="Undo (Ctrl Z)" aria-label="Undo" disabled={!canUndo} tabIndex={open ? 0 : -1} onClick={() => world.undo()}><ArtIcon name="undo" size={16} /></button>
-      <button className="palette-act" title="Redo (Ctrl Shift Z)" aria-label="Redo" disabled={!canRedo} tabIndex={open ? 0 : -1} onClick={() => world.redo()}><ArtIcon name="redo" size={16} /></button>
-      <button className="palette-act" title="Reset to default park" aria-label="Reset park" tabIndex={open ? 0 : -1} onClick={() => world.resetPark()}><ArtIcon name="reset" size={16} /></button>
-    </div>
+          <span className={`build-status ${placingValid ? '' : 'invalid'}`}>{statusText}</span>
+          <span className="psep" />
+          <button
+            type="button"
+            className="strip-btn"
+            title="Rotate -45° (Q)"
+            aria-label="Rotate left 45 degrees"
+            onClick={() => world.rotatePlacement(-Math.PI / 4)}
+          >
+            <ArtIcon name="rotL" size={14} />
+            <span>-45°</span>
+          </button>
+          <button
+            type="button"
+            className="strip-btn"
+            title="Rotate +45° (R)"
+            aria-label="Rotate right 45 degrees"
+            onClick={() => world.rotatePlacement(Math.PI / 4)}
+          >
+            <ArtIcon name="rotR" size={14} />
+            <span>+45°</span>
+          </button>
+          <button
+            type="button"
+            className={`strip-btn ${gridSnap ? 'active' : ''}`}
+            title="0.5 m Grid Snap (Hold Alt)"
+            aria-pressed={gridSnap}
+            onClick={() => { Sfx.tick(); world.toggleGridSnap(); }}
+          >
+            <span>0.5m Snap</span>
+          </button>
+          <button
+            type="button"
+            className="strip-btn cancel"
+            title="Cancel (Esc / Right-Click)"
+            aria-label="Cancel placement"
+            onClick={() => {
+              if (placingKind) {
+                world.cancelPlacement();
+                Sfx.tick();
+              } else {
+                world.cancelMoveMode();
+              }
+            }}
+          >
+            <ArtIcon name="close" size={13} />
+            <span>Cancel</span>
+          </button>
+        </div>
+      )}
+      <div className={`palette ${open ? 'on' : ''}`} role="toolbar" aria-label="Park piece palette" aria-hidden={!open}>
+        {PALETTE_PIECES.map((p, i) => {
+          const armed = placingKind === p.kind;
+          const dragging = draggingPalette === p.kind;
+          return (
+            <button
+              key={p.kind}
+              type="button"
+              className={`palette-item ${armed ? 'armed' : ''} ${dragging ? 'dragging' : ''}`}
+              title={`Click to arm or drag onto island (${i + 1})`}
+              aria-label={`Place ${p.label}`}
+              aria-pressed={armed}
+              tabIndex={open ? 0 : -1}
+              onPointerDown={e => {
+                if (e.button !== 0 || !open) return;
+                e.preventDefault();
+                Sfx.unlock();
+                world.beginPaletteInteraction(p.kind, e.clientX, e.clientY);
+              }}
+            >
+              <kbd className="pkey" aria-hidden="true">{i + 1}</kbd>
+              <ArtIcon name={p.icon} size={21} />
+              <span>{p.label}</span>
+            </button>
+          );
+        })}
+        <span className="psep" />
+        <button type="button" className="palette-act" title="Undo (Ctrl Z)" aria-label="Undo" disabled={!canUndo} tabIndex={open ? 0 : -1} onClick={() => world.undo()}><ArtIcon name="undo" size={16} /></button>
+        <button type="button" className="palette-act" title="Redo (Ctrl Shift Z)" aria-label="Redo" disabled={!canRedo} tabIndex={open ? 0 : -1} onClick={() => world.redo()}><ArtIcon name="redo" size={16} /></button>
+        <button type="button" className="palette-act" title="Reset to default park" aria-label="Reset park" tabIndex={open ? 0 : -1} onClick={() => world.resetPark()}><ArtIcon name="reset" size={16} /></button>
+      </div>
+    </>
   );
 }
 
@@ -234,6 +317,8 @@ export function Hud() {
   const howToPlayOpen = useAppPhase(s => s.howToPlayOpen);
   const selected = useUI(s => s.selected);
   const buildMode = useUI(s => s.buildMode);
+  const placingKind = useUI(s => s.placingKind);
+  const moveMode = useUI(s => s.moveMode);
   const toast = useUI(s => s.toast);
   const sound = useUI(s => s.sound);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -317,12 +402,16 @@ export function Hud() {
       <BuildPalette live={live} />
 
       <div className={`hint ${live ? 'hud-live' : 'hud-hidden'}`} aria-hidden={!live}>
-        {selected?.kind === 'prop' ? (
-          <span className="swap" key="prop"><span>Drag piece to move</span><span><kbd>Q</kbd><kbd>R</kbd> rotate</span><span className="opt"><kbd>Ctrl</kbd><kbd>D</kbd> duplicate</span><span className="opt"><kbd>Del</kbd> delete</span><span className="opt"><kbd>Esc</kbd> deselect</span></span>
+        {placingKind ? (
+          <span className="swap" key="placing"><span>Click land to place</span><span><kbd>Shift</kbd>+Click multi-place</span><span><kbd>Q</kbd><kbd>R</kbd> rotate</span><span className="opt"><kbd>Alt</kbd> 0.5m snap</span><span><kbd>Esc</kbd> cancel</span></span>
+        ) : moveMode && selected?.kind === 'prop' ? (
+          <span className="swap" key="moving"><span>Glide &amp; click land to place</span><span><kbd>Q</kbd><kbd>R</kbd> rotate</span><span className="opt"><kbd>Alt</kbd> 0.5m snap</span><span><kbd>Esc</kbd> cancel</span></span>
+        ) : selected?.kind === 'prop' ? (
+          <span className="swap" key="prop"><span>Drag or <kbd>G</kbd> to move</span><span><kbd>Q</kbd><kbd>R</kbd> rotate</span><span className="opt"><kbd>Ctrl</kbd><kbd>D</kbd> duplicate</span><span className="opt"><kbd>Del</kbd> delete</span><span className="opt"><kbd>Esc</kbd> deselect</span></span>
         ) : selected?.kind === 'sheep' ? (
           <span className="swap" key="b"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> ride</span><span><kbd>Space</kbd> ollie</span><span className="opt"><kbd>F</kbd> kickflip</span><span className="opt"><kbd>E</kbd> 360</span><span className="opt"><kbd>C</kbd> board</span><span>Click grass to send</span><span className="opt"><kbd>Esc</kbd> deselect</span></span>
         ) : buildMode ? (
-          <span className="swap" key="build"><span>Drag pieces onto the island</span><span className="opt">Click any piece to edit</span><span className="opt"><kbd>Ctrl</kbd><kbd>Z</kbd> undo</span><span><kbd>B</kbd> close build</span></span>
+          <span className="swap" key="build"><span>Click or drag piece to place</span><span className="opt"><kbd>1</kbd>–<kbd>6</kbd> quick arm</span><span className="opt"><kbd>Ctrl</kbd><kbd>Z</kbd> undo</span><span><kbd>B</kbd> close build</span></span>
         ) : (
           <span className="swap" key="a"><span>Click a sheep or piece to edit</span><span className="opt">Drag to orbit</span><span><kbd>B</kbd> build park</span><span><kbd>N</kbd> new sheep</span></span>
         )}
