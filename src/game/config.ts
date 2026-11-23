@@ -23,6 +23,27 @@ export const RAIL_Y = RAIL.top - 0.135 * SHEEP_SCALE;
 export const PLAZA_TOP = 0.012;
 export const GRAVITY = 18;
 export const BOUNDS = { x: 12.1, z: 8.1 } as const;
+export const BUILD_SNAP_STEP = 0.5;
+
+export function snapBuildCoord(v: number, snap: boolean, step = BUILD_SNAP_STEP): number {
+  return snap ? Math.round(v / step) * step : v;
+}
+
+export type PlacementCheck = { valid: boolean; reason: 'ok' | 'pond' | 'bounds' };
+
+/** Check whether world coordinates lie on dry island land inside bounds and outside the pond ellipse. */
+export function checkPlacement(x: number, z: number, pondMargin = 0.2): PlacementCheck {
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return { valid: false, reason: 'bounds' };
+  if (Math.abs(x) > BOUNDS.x || Math.abs(z) > BOUNDS.z) return { valid: false, reason: 'bounds' };
+  const dx = (x - POND.x) / (POND.rx + pondMargin);
+  const dz = (z - POND.z) / (POND.rz + pondMargin);
+  if (dx * dx + dz * dz < 1) return { valid: false, reason: 'pond' };
+  return { valid: true, reason: 'ok' };
+}
+
+export function isValidPlacement(x: number, z: number, pondMargin = 0.2): boolean {
+  return checkPlacement(x, z, pondMargin).valid;
+}
 
 export const BOARD_COLORS = ['#ff8fa3', '#6fd0b4', '#ffd166', '#a59cf5', '#7cc6fe', '#ff9f68', '#c3e88d'] as const;
 export const NAMES = ['Woolbert', 'Baarbara', 'Lambo', 'Mutton Chop', 'Cotton', 'Clover', 'Nimbus', 'Biscuit', 'Tofu', 'Marsh', 'Dumpling', 'Fleecy', 'Pebble', 'Noodle', 'Juniper', 'Mochi'] as const;
