@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { useAppPhase } from './appPhase';
 import { BOARD_SPECS, BOARD_STYLES, type BoardStyle } from './boards';
-import { BOARD_COLORS, BOUNDS, BUSHES, isOnPlaza, PLAZA_TOP, POND, type Obstacle } from './config';
-import { clamp, damp, pick, rand, wrapA } from './math';
+import { BOARD_COLORS, BOUNDS, BUSHES, checkPlacement, isOnPlaza, PLAZA_TOP, POND, snapBuildCoord, type Obstacle, type PlacementCheck } from './config';
+import { clamp, damp, dampA, pick, rand, wrapA } from './math';
 import {
   buildShareUrl, clearParkStorage, downloadParkJson, readParkJsonFile, saveParkToStorage,
   type ParkData, type SerializedSheep,
@@ -54,6 +54,21 @@ class World implements SheepWorld {
   hoveredProp: ParkProp | null = null;
   moveMode = false;
   setOrbitEnabled: ((on: boolean) => void) | null = null;
+  placingKind: PropKind | null = null;
+  placingRotY = 0;
+  placingValid = true;
+  placingReason: PlacementCheck['reason'] = 'ok';
+  private gridSnapPinned = false;
+  private altHeld = false;
+  private ghostX = 1.5;
+  private ghostZ = 0.5;
+  private ghostTargetX = 1.5;
+  private ghostTargetZ = 0.5;
+  private rawCursorX = 1.5;
+  private rawCursorZ = 0.5;
+  private ghostSeeded = false;
+  private moveOrigin: { x: number; z: number; rotY: number } | null = null;
+  private paletteGesture: { kind: PropKind; startX: number; startY: number; dragged: boolean; wasAlreadyArmed: boolean } | null = null;
   private previewProp: ParkProp | null = null;
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -63,6 +78,10 @@ class World implements SheepWorld {
   private confettis: Confetti[] = []; private confettiI = 0;
   private hoverRing: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>;
   private selRing: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>;
+  private ghostReticle = new THREE.Group();
+  private ghostRing: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>;
+  private ghostDisc: THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial>;
+  private ghostChevron: THREE.Mesh<THREE.ShapeGeometry, THREE.MeshBasicMaterial>;
   private markers: { m: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>; t: number }[] = [];
   private bubbles: Bubble[] = [];
   private history: Cmd[] = []; private future: Cmd[] = [];
@@ -77,6 +96,30 @@ class World implements SheepWorld {
     };
     this.hoverRing = ring(0.62, 0.7, '#ffffff');
     this.selRing = ring(0.64, 0.72, '#3b82f6');
+    this.ghostRing = new THREE.Mesh(
+      new THREE.RingGeometry(0.84, 0.96, 64),
+      new THREE.MeshBasicMaterial({ color: '#38bdf8', transparent: true, depthWrite: false, opacity: 0.92 }),
+    );
+    this.ghostRing.rotation.x = -Math.PI / 2;
+    this.ghostDisc = new THREE.Mesh(
+      new THREE.CircleGeometry(0.84, 48),
+      new THREE.MeshBasicMaterial({ color: '#5eead4', transparent: true, depthWrite: false, opacity: 0.14 }),
+    );
+    this.ghostDisc.rotation.x = -Math.PI / 2;
+    const chevShape = new THREE.Shape();
+    chevShape.moveTo(-1.34, 0);
+    chevShape.lineTo(-1.02, 0.24);
+    chevShape.lineTo(-1.11, 0);
+    chevShape.lineTo(-1.02, -0.24);
+    chevShape.closePath();
+    this.ghostChevron = new THREE.Mesh(
+      new THREE.ShapeGeometry(chevShape),
+      new THREE.MeshBasicMaterial({ color: '#38bdf8', transparent: true, depthWrite: false, opacity: 0.96, side: THREE.DoubleSide }),
+    );
+    this.ghostChevron.rotation.x = -Math.PI / 2;
+    this.ghostReticle.add(this.ghostDisc, this.ghostRing, this.ghostChevron);
+    this.ghostReticle.visible = false;
+    this.group.add(this.ghostReticle);
     this.buildParticles();
     this.seedProps();
     this.seedFlock();
@@ -302,7 +345,15 @@ class World implements SheepWorld {
       this.toastTimer = null;
     }, 2200);
   }
+  get isGridSnap(): boolean {
+    return this.gridSnapPinned || this.altHeld;
+  }
+  private rotDeg(r: number): number {
+    return Math.round(((wrapA(r) * 180) / Math.PI + 360) % 360);
+  }
   select(s: Sheep) {
+    if (this.moveMode) this.cancelMoveMode();
+    if (this.placingKind) this.cancelPlacement();
     this.selectedProp = null; this.moveMode = false;
     if (this.selected === s) { s.sqV += 6; Sfx.baa(s.voicePitch * rand(1.02, 1.14), s.voiceVib, s.voiceDur); this.say(s, pick(['baa!', 'baaa~', 'meh', 'rad!', 'hi :)', 'wheee'])); return; }
     this.selected = s; this.barFresh = true;
@@ -311,6 +362,8 @@ class World implements SheepWorld {
     this.syncUI();
   }
   selectProp(p: ParkProp) {
+    if (this.moveMode && this.selectedProp !== p) this.cancelMoveMode();
+    if (this.placingKind) this.cancelPlacement();
     this.selected = null; this.moveMode = false;
     if (this.selectedProp === p) { p.sqV += 5; Sfx.pop(); return; }
     this.selectedProp = p; this.barFresh = true;
@@ -319,20 +372,108 @@ class World implements SheepWorld {
     this.syncUI();
   }
   deselect() {
+    if (this.moveMode) this.cancelMoveMode();
+    if (this.placingKind) this.cancelPlacement();
     this.selected = null; this.selectedProp = null; this.moveMode = false;
     overlay.sel?.classList.remove('on'); this.syncUI();
   }
   toggleBuildMode(on?: boolean) {
     const next = on ?? !useUI.getState().buildMode;
-    if (!next) { this.moveMode = false; this.cancelPaletteDrag(); }
+    if (!next) {
+      if (this.moveMode) this.cancelMoveMode();
+      this.cancelPlacement();
+    }
     useUI.setState({ buildMode: next, moveMode: next ? this.moveMode : false });
     Sfx.tick();
   }
   toggleMoveMode(on?: boolean) {
     if (!this.selectedProp) return;
-    this.moveMode = on ?? !this.moveMode;
+    const next = on ?? !this.moveMode;
+    if (next) {
+      this.cancelPlacement();
+      const p = this.selectedProp;
+      this.moveOrigin = { x: p.x, z: p.z, rotY: p.rotY };
+      this.ghostX = p.x; this.ghostZ = p.z;
+      this.ghostTargetX = p.x; this.ghostTargetZ = p.z;
+      this.rawCursorX = p.x; this.rawCursorZ = p.z;
+      this.ghostSeeded = true;
+      const check = checkPlacement(p.x, p.z);
+      this.placingValid = check.valid;
+      this.placingReason = check.reason;
+      this.moveMode = true;
+      p.setTransform(p.x, p.z, p.rotY, 0.06);
+      useUI.setState({ placingValid: check.valid, placingReason: check.reason });
+      Sfx.tick();
+      this.syncUI();
+    } else {
+      this.cancelMoveMode();
+    }
+  }
+  cancelMoveMode() {
+    if (!this.moveMode) return;
+    const p = this.selectedProp, orig = this.moveOrigin;
+    this.moveMode = false;
+    this.moveOrigin = null;
+    this.ghostReticle.visible = false;
+    if (p && orig) {
+      p.setGhostLook('off');
+      p.setTransform(orig.x, orig.z, orig.rotY, 0);
+      if (p.kind === 'rail') this.cancelGrindsOnRail(p.id);
+      this.rebuildRegistry();
+    }
+    this.placingValid = true;
+    this.placingReason = 'ok';
+    useUI.setState({ placingValid: true, placingReason: 'ok' });
     Sfx.tick();
     this.syncUI();
+  }
+  commitMoveProp(): boolean {
+    if (!this.selectedProp || !this.moveMode) return false;
+    const check = checkPlacement(this.ghostTargetX, this.ghostTargetZ);
+    if (!check.valid) {
+      Sfx.bonk();
+      this.showToast(check.reason === 'pond' ? "Can't place in the pond!" : 'Stay inside the island bounds');
+      return false;
+    }
+    const p = this.selectedProp;
+    const orig = this.moveOrigin ?? { x: p.x, z: p.z, rotY: p.rotY };
+    const toX = clamp(this.ghostTargetX, -BOUNDS.x, BOUNDS.x);
+    const toZ = clamp(this.ghostTargetZ, -BOUNDS.z, BOUNDS.z);
+    const toRot = p.rotY;
+    p.setGhostLook('off');
+    this.moveMode = false;
+    this.moveOrigin = null;
+    this.ghostReticle.visible = false;
+    this.placingValid = true;
+    this.placingReason = 'ok';
+    useUI.setState({ placingValid: true, placingReason: 'ok' });
+    if (Math.hypot(toX - orig.x, toZ - orig.z) < 0.02 && Math.abs(wrapA(toRot - orig.rotY)) < 0.01) {
+      p.setTransform(orig.x, orig.z, orig.rotY, 0);
+      this.rebuildRegistry();
+      this.syncUI();
+      return true;
+    }
+    this.commit({
+      do: () => {
+        p.setTransform(toX, toZ, toRot, 0);
+        p.sqV += 4;
+        if (p.kind === 'rail') this.cancelGrindsOnRail(p.id);
+        this.rebuildRegistry();
+        this.syncUI();
+        saveParkToStorage(this.serializePark());
+      },
+      undo: () => {
+        p.setTransform(orig.x, orig.z, orig.rotY, 0);
+        p.sqV += 4;
+        if (p.kind === 'rail') this.cancelGrindsOnRail(p.id);
+        this.rebuildRegistry();
+        this.syncUI();
+        saveParkToStorage(this.serializePark());
+      },
+    });
+    Sfx.pop();
+    this.puff(_b.set(toX, 0.12, toZ), 6, 1.2, 1.0);
+    return true;
   }
   syncUI() {
     const s = this.selected, p = this.selectedProp;
@@ -371,7 +512,13 @@ class World implements SheepWorld {
     const j = this.propHitTargets.indexOf(p.hit); if (j >= 0) this.propHitTargets.splice(j, 1);
     this.dyingProps.push(p);
     if (p.kind === 'rail') this.cancelGrindsOnRail(p.id);
-    if (this.selectedProp === p) this.deselect();
+    if (this.selectedProp === p) {
+      this.moveMode = false;
+      this.moveOrigin = null;
+      this.ghostReticle.visible = false;
+      p.setGhostLook('off');
+      this.deselect();
+    }
     this.rebuildRegistry();
   }
   addProp(def: PropDef, selectIt = true): ParkProp {
@@ -417,20 +564,40 @@ class World implements SheepWorld {
     });
   }
   movePropLive(p: ParkProp, x: number, z: number) {
-    p.setTransform(clamp(x, -BOUNDS.x, BOUNDS.x), clamp(z, -BOUNDS.z, BOUNDS.z), p.rotY);
+    const check = checkPlacement(x, z);
+    if (check.valid !== this.placingValid || check.reason !== this.placingReason) {
+      this.placingValid = check.valid;
+      this.placingReason = check.reason;
+      useUI.setState({ placingValid: check.valid, placingReason: check.reason });
+    }
+    p.setGhostLook(check.valid ? 'off' : 'invalid');
+    p.setTransform(clamp(x, -BOUNDS.x, BOUNDS.x), clamp(z, -BOUNDS.z, BOUNDS.z), p.rotY, 0.04);
     if (p.kind === 'rail') this.cancelGrindsOnRail(p.id);
     this.rebuildRegistry();
   }
   movePropCommit(p: ParkProp, fromX: number, fromZ: number, toX: number, toZ: number) {
+    p.setGhostLook('off');
+    const check = checkPlacement(toX, toZ);
+    if (!check.valid) {
+      p.setTransform(fromX, fromZ, p.rotY, 0);
+      if (p.kind === 'rail') this.cancelGrindsOnRail(p.id);
+      this.rebuildRegistry();
+      this.placingValid = true;
+      this.placingReason = 'ok';
+      useUI.setState({ placingValid: true, placingReason: 'ok' });
+      Sfx.bonk();
+      this.showToast(check.reason === 'pond' ? "Can't place in the pond!" : 'Stay inside the island bounds');
+      return;
+    }
     const cx = clamp(toX, -BOUNDS.x, BOUNDS.x), cz = clamp(toZ, -BOUNDS.z, BOUNDS.z);
     if (Math.hypot(cx - fromX, cz - fromZ) < 0.02) {
-      p.setTransform(fromX, fromZ, p.rotY);
+      p.setTransform(fromX, fromZ, p.rotY, 0);
       this.rebuildRegistry();
       return;
     }
     this.commit({
       do: () => {
-        p.setTransform(cx, cz, p.rotY);
+        p.setTransform(cx, cz, p.rotY, 0);
         p.sqV += 3;
         if (p.kind === 'rail') this.cancelGrindsOnRail(p.id);
         this.rebuildRegistry();
@@ -438,7 +605,7 @@ class World implements SheepWorld {
         saveParkToStorage(this.serializePark());
       },
       undo: () => {
-        p.setTransform(fromX, fromZ, p.rotY);
+        p.setTransform(fromX, fromZ, p.rotY, 0);
         p.sqV += 3;
         if (p.kind === 'rail') this.cancelGrindsOnRail(p.id);
         this.rebuildRegistry();
@@ -452,38 +619,175 @@ class World implements SheepWorld {
     const p = this.selectedProp; if (!p) return;
     this.movePropCommit(p, p.x, p.z, p.x + dx, p.z + dz);
   }
-  beginPaletteDrag(kind: PropKind) {
-    this.cancelPaletteDrag();
-    const p = new ParkProp({ kind, x: 1.5, z: 0.5, rotY: 0 });
-    p.root.visible = false;
+  armPlacement(kind: PropKind) {
+    if (this.moveMode) this.cancelMoveMode();
+    this.selected = null;
+    this.selectedProp = null;
+    overlay.sel?.classList.remove('on');
+    if (this.previewProp) {
+      this.group.remove(this.previewProp.root);
+      this.previewProp = null;
+    }
+    if (this.placingKind !== kind) this.placingRotY = 0;
+    this.placingKind = kind;
+    this.placingValid = true;
+    this.placingReason = 'ok';
+    const p = new ParkProp({ kind, x: this.ghostTargetX, z: this.ghostTargetZ, rotY: this.placingRotY });
+    p.setGhostLook('valid');
+    p.popT = 1;
+    p.root.scale.setScalar(1);
+    p.root.visible = this.ghostSeeded;
     this.group.add(p.root);
     this.previewProp = p;
-    useUI.setState({ draggingPalette: kind });
+    useUI.setState({
+      selected: null,
+      moveMode: false,
+      placingKind: kind,
+      placingRotDeg: this.rotDeg(this.placingRotY),
+      placingValid: true,
+      placingReason: 'ok',
+    });
     Sfx.tick();
   }
+  cancelPlacement() {
+    if (this.previewProp) {
+      this.group.remove(this.previewProp.root);
+      this.previewProp = null;
+    }
+    this.placingKind = null;
+    this.paletteGesture = null;
+    this.ghostSeeded = false;
+    this.ghostReticle.visible = false;
+    this.placingValid = true;
+    this.placingReason = 'ok';
+    useUI.setState({ placingKind: null, draggingPalette: null, placingValid: true, placingReason: 'ok' });
+  }
+  beginPaletteInteraction(kind: PropKind, clientX = 0, clientY = 0) {
+    const wasAlreadyArmed = this.placingKind === kind;
+    this.armPlacement(kind);
+    this.paletteGesture = { kind, startX: clientX, startY: clientY, dragged: false, wasAlreadyArmed };
+    useUI.setState({ draggingPalette: kind });
+  }
+  markPaletteDragged(clientX: number, clientY: number): boolean {
+    if (!this.paletteGesture) return false;
+    if (Math.hypot(clientX - this.paletteGesture.startX, clientY - this.paletteGesture.startY) > 12) {
+      this.paletteGesture.dragged = true;
+    }
+    return this.paletteGesture.dragged;
+  }
+  finishPaletteInteraction(onCanvas: boolean, x?: number, z?: number, shiftKey = false) {
+    const g = this.paletteGesture;
+    this.paletteGesture = null;
+    useUI.setState({ draggingPalette: null });
+    if (!g) return;
+    if (!g.dragged) {
+      if (g.wasAlreadyArmed) {
+        this.cancelPlacement();
+        Sfx.tick();
+      }
+      return;
+    }
+    if (onCanvas && x !== undefined && z !== undefined) {
+      this.updateGlideCursor(x, z, this.altHeld);
+      this.commitGlidePlacement(shiftKey);
+    } else {
+      this.hidePalettePreview();
+    }
+  }
+  rotatePlacement(deltaAngle = Math.PI / 4) {
+    if (this.placingKind) {
+      this.placingRotY = wrapA(this.placingRotY + deltaAngle);
+      if (this.previewProp) this.previewProp.sqV += 3.5;
+      Sfx.tick();
+      useUI.setState({ placingRotDeg: this.rotDeg(this.placingRotY) });
+      return;
+    }
+    if (this.selectedProp && this.moveMode) {
+      const p = this.selectedProp;
+      p.rotY = wrapA(p.rotY + deltaAngle);
+      p.sqV += 3.5;
+      Sfx.tick();
+      this.syncUI();
+      return;
+    }
+    if (this.selectedProp) this.rotateProp(deltaAngle);
+  }
+  setAltHeld(alt: boolean) {
+    if (this.altHeld === alt) return;
+    this.altHeld = alt;
+    useUI.setState({ gridSnap: this.isGridSnap });
+    if (this.ghostSeeded && (this.placingKind || this.moveMode)) {
+      this.updateGlideCursor(this.rawCursorX, this.rawCursorZ, alt);
+    }
+  }
+  toggleGridSnap(on?: boolean) {
+    this.gridSnapPinned = on ?? !this.gridSnapPinned;
+    useUI.setState({ gridSnap: this.isGridSnap });
+    if (this.ghostSeeded && (this.placingKind || this.moveMode)) {
+      this.updateGlideCursor(this.rawCursorX, this.rawCursorZ, this.altHeld);
+    }
+  }
+  updateGlideCursor(rawX: number, rawZ: number, altKey = this.altHeld) {
+    this.rawCursorX = rawX;
+    this.rawCursorZ = rawZ;
+    if (altKey !== this.altHeld) {
+      this.altHeld = altKey;
+      useUI.setState({ gridSnap: this.isGridSnap });
+    }
+    const sx = snapBuildCoord(rawX, this.isGridSnap);
+    const sz = snapBuildCoord(rawZ, this.isGridSnap);
+    const check = checkPlacement(sx, sz);
+    if (check.valid !== this.placingValid || check.reason !== this.placingReason) {
+      this.placingValid = check.valid;
+      this.placingReason = check.reason;
+      useUI.setState({ placingValid: check.valid, placingReason: check.reason });
+    }
+    this.ghostTargetX = clamp(sx, -BOUNDS.x - 1.2, BOUNDS.x + 1.2);
+    this.ghostTargetZ = clamp(sz, -BOUNDS.z - 1.2, BOUNDS.z + 1.2);
+    if (!this.ghostSeeded) {
+      this.ghostX = this.ghostTargetX;
+      this.ghostZ = this.ghostTargetZ;
+      this.ghostSeeded = true;
+    }
+    if (this.previewProp) {
+      this.previewProp.root.visible = true;
+      this.previewProp.setGhostLook(check.valid ? 'valid' : 'invalid');
+    }
+  }
+  commitGlidePlacement(keepArmed = false): boolean {
+    if (!this.placingKind) return false;
+    const check = checkPlacement(this.ghostTargetX, this.ghostTargetZ);
+    if (!check.valid) {
+      Sfx.bonk();
+      this.showToast(check.reason === 'pond' ? "Can't build in the pond!" : 'Place inside the island bounds');
+      if (this.previewProp) this.previewProp.sqV -= 4;
+      return false;
+    }
+    const kind = this.placingKind, x = this.ghostTargetX, z = this.ghostTargetZ, rotY = this.placingRotY;
+    if (keepArmed) {
+      this.addProp({ kind, x, z, rotY }, false);
+      if (this.previewProp) this.previewProp.sqV += 5;
+    } else {
+      this.cancelPlacement();
+      this.addProp({ kind, x, z, rotY }, true);
+    }
+    return true;
+  }
+  beginPaletteDrag(kind: PropKind) {
+    this.beginPaletteInteraction(kind, 0, 0);
+  }
   updatePalettePreview(x: number, z: number) {
-    if (!this.previewProp) return;
-    this.previewProp.root.visible = true;
-    this.previewProp.setTransform(clamp(x, -BOUNDS.x, BOUNDS.x), clamp(z, -BOUNDS.z, BOUNDS.z), this.previewProp.rotY);
+    this.updateGlideCursor(x, z, this.altHeld);
   }
   hidePalettePreview() {
     if (this.previewProp) this.previewProp.root.visible = false;
+    this.ghostReticle.visible = false;
   }
   finishPaletteDrag(x?: number, z?: number) {
-    const kind = useUI.getState().draggingPalette;
-    if (!kind) return;
-    if (this.previewProp) { this.group.remove(this.previewProp.root); this.previewProp = null; }
-    useUI.setState({ draggingPalette: null });
-    let px = x, pz = z;
-    if (px === undefined || pz === undefined) {
-      this.randomSpot(false, _b);
-      px = _b.x; pz = _b.z;
-    }
-    this.addProp({ kind, x: px, z: pz, rotY: 0 }, true);
+    this.finishPaletteInteraction(x !== undefined && z !== undefined, x, z, false);
   }
   cancelPaletteDrag() {
-    if (this.previewProp) { this.group.remove(this.previewProp.root); this.previewProp = null; }
-    if (useUI.getState().draggingPalette) useUI.setState({ draggingPalette: null });
+    this.cancelPlacement();
   }
 
   setBoardStyle(style: BoardStyle) {
@@ -826,15 +1130,43 @@ class World implements SheepWorld {
       this.hoverRing.position.set(hp.x, PLAZA_TOP + 0.01, hp.z); this.hoverRing.material.opacity = 0.85 * hp.hoverK; this.hoverRing.scale.setScalar(hp.ringRadius * (0.95 + Math.sin(t * 6) * 0.04));
     } else this.hoverRing.material.opacity = damp(this.hoverRing.material.opacity, 0, 14, dt);
 
+    const syncReticle = (x: number, z: number, rotY: number, radius: number, valid: boolean) => {
+      this.ghostReticle.visible = true;
+      this.ghostReticle.position.set(x, PLAZA_TOP + 0.014, z);
+      this.ghostReticle.rotation.y = rotY;
+      this.ghostReticle.scale.setScalar(radius * (1 + Math.sin(t * 6) * 0.03));
+      const ringHex = valid ? 0x38bdf8 : 0xf43f5e;
+      const discHex = valid ? 0x5eead4 : 0xfb7185;
+      this.ghostRing.material.color.setHex(ringHex);
+      this.ghostChevron.material.color.setHex(ringHex);
+      this.ghostDisc.material.color.setHex(discHex);
+    };
+
     if (this.previewProp && this.previewProp.root.visible) {
-      this.selRing.position.set(this.previewProp.x, PLAZA_TOP + 0.012, this.previewProp.z);
-      this.selRing.material.opacity = damp(this.selRing.material.opacity, 0.9, 14, dt);
-      this.selRing.scale.setScalar(this.previewProp.ringRadius * (1 + Math.sin(t * 6) * 0.04));
-    } else if (sel) {
-      this.selRing.position.set(sel.pos.x, PLAZA_TOP + 0.011, sel.pos.z); this.selRing.material.opacity = damp(this.selRing.material.opacity, 0.9, 10, dt); this.selRing.scale.setScalar(1 + Math.sin(t * 4) * 0.04);
-    } else if (selP) {
-      this.selRing.position.set(selP.x, PLAZA_TOP + 0.011, selP.z); this.selRing.material.opacity = damp(this.selRing.material.opacity, 0.9, 10, dt); this.selRing.scale.setScalar(selP.ringRadius * (1 + Math.sin(t * 4) * 0.04));
-    } else this.selRing.material.opacity = damp(this.selRing.material.opacity, 0, 10, dt);
+      this.ghostX = damp(this.ghostX, this.ghostTargetX, 24, dt);
+      this.ghostZ = damp(this.ghostZ, this.ghostTargetZ, 24, dt);
+      const curRot = dampA(this.previewProp.rotY, this.placingRotY, 22, dt);
+      const lift = 0.06 + Math.sin(t * 5) * 0.012;
+      this.previewProp.setTransform(this.ghostX, this.ghostZ, curRot, lift);
+      this.previewProp.update(dt, t);
+      syncReticle(this.ghostX, this.ghostZ, curRot, this.previewProp.ringRadius, this.placingValid);
+      this.selRing.material.opacity = damp(this.selRing.material.opacity, 0, 14, dt);
+    } else if (selP && this.moveMode) {
+      this.ghostX = damp(this.ghostX, this.ghostTargetX, 24, dt);
+      this.ghostZ = damp(this.ghostZ, this.ghostTargetZ, 24, dt);
+      const lift = 0.06 + Math.sin(t * 5) * 0.012;
+      selP.setTransform(this.ghostX, this.ghostZ, selP.rotY, lift);
+      selP.setGhostLook(this.placingValid ? 'off' : 'invalid');
+      syncReticle(this.ghostX, this.ghostZ, selP.rotY, selP.ringRadius, this.placingValid);
+      this.selRing.material.opacity = damp(this.selRing.material.opacity, 0, 14, dt);
+    } else {
+      this.ghostReticle.visible = false;
+      if (sel) {
+        this.selRing.position.set(sel.pos.x, PLAZA_TOP + 0.011, sel.pos.z); this.selRing.material.opacity = damp(this.selRing.material.opacity, 0.9, 10, dt); this.selRing.scale.setScalar(1 + Math.sin(t * 4) * 0.04);
+      } else if (selP) {
+        this.selRing.position.set(selP.x, PLAZA_TOP + 0.011, selP.z); this.selRing.material.opacity = damp(this.selRing.material.opacity, 0.9, 10, dt); this.selRing.scale.setScalar(selP.ringRadius * (1 + Math.sin(t * 4) * 0.04));
+      } else this.selRing.material.opacity = damp(this.selRing.material.opacity, 0, 10, dt);
+    }
     for (let i = this.markers.length - 1; i >= 0; i--) {
       const mk = this.markers[i]!; mk.t += dt; const k = mk.t / 0.8;
       mk.m.scale.setScalar(1 + k * 2.2); mk.m.material.opacity = (1 - k) * 0.9;
@@ -868,7 +1200,7 @@ class World implements SheepWorld {
     tag.style.transform = `translate(${clamp((x0 + x1) / 2 - tw / 2, 8, innerWidth - tw - 8)}px, ${y1 + 8}px)`;
     const bw = bar.offsetWidth, bh = bar.offsetHeight;
     const tx = clamp((x0 + x1) / 2 - bw / 2, 8, innerWidth - bw - 8);
-    const bottomReserve = useUI.getState().buildMode ? 136 : 70;
+    const bottomReserve = useUI.getState().buildMode ? 176 : 70;
     let ty = y1 + 36; if (ty + bh > innerHeight - bottomReserve) ty = y0 - bh - 14;
     if (this.barFresh) { this.barX = tx; this.barY = ty; this.barFresh = false; }
     else if (!overlay.barHover) { this.barX = damp(this.barX, tx, 9, dt); this.barY = damp(this.barY, ty, 9, dt); }
