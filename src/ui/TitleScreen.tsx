@@ -7,150 +7,112 @@ import { BrandLogo } from './BrandLogo';
 
 function FallbackHeroSheep() {
   return (
-    <svg viewBox="0 0 360 270" className="ss-hero-fallback" role="img" aria-label="Editorial gouache illustration of a sheep catching air off a mint quarter-pipe">
+    <svg viewBox="0 0 360 270" className="ss-hero-fallback" role="img" aria-label="Editorial gouache illustration of a sheep in a mustard pom-pom beanie catching air off a mint quarter-pipe">
       <defs>
-        <linearGradient id="ss-hero-sky" x1="180" y1="0" x2="180" y2="205" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#82bce8" />
-          <stop offset="65%" stopColor="#b9dff7" />
-          <stop offset="100%" stopColor="#e8f3fa" />
+        <linearGradient id="ss-hero-sky" x1="180" y1="0" x2="180" y2="140" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#92c8ec" />
+          <stop offset="65%" stopColor="#c5e4f7" />
+          <stop offset="100%" stopColor="#f4EFE2" />
         </linearGradient>
-        <linearGradient id="ss-hero-ramp" x1="110" y1="165" x2="290" y2="270" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#b0e6d5" />
-          <stop offset="100%" stopColor="#7ec4ae" />
+        <linearGradient id="ss-hero-ramp" x1="120" y1="165" x2="340" y2="270" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#bce8da" />
+          <stop offset="100%" stopColor="#85c8b3" />
         </linearGradient>
       </defs>
 
-      {/* Sunlit powder-blue sky & warm morning sun */}
+      {/* Sunlit powder-blue sky & gouache clouds */}
       <rect width="360" height="270" fill="url(#ss-hero-sky)" />
-      <circle cx="64" cy="48" r="24" fill="#fff3c4" opacity="0.55" />
-      <circle cx="64" cy="48" r="15" fill="#ffe07d" />
-
-      {/* Billowing flat-bottomed gouache clouds */}
       <path
-        d="M-6 66h96c6 0 11-4.5 11-10 0-5-4-9-9-9.8-1-5.5-6-9.7-12-9.7-2.8 0-5.4 1-7.4 2.6-3-7.5-10.5-12.8-19.2-12.8-11 0-20 8.4-20.8 19-2.2-.8-4.6-1.3-7.2-1.3-9.5 0-17.4 7-18.8 16.2H-6Z"
-        fill="#faf4e6"
+        d="M-6 52h104c5 0 9-4 9-8.5 0-4.2-3.4-7.8-7.8-8.3-1.4-5.6-6.5-9.7-12.6-9.7-3.4 0-6.5 1.3-8.8 3.5-3.2-7.8-11-13.2-20-13.2-11.5 0-21 8.8-21.8 20-2.4-.9-5-1.4-7.8-1.4-9.8 0-18 7.2-19.4 16.6H-6Z"
+        fill="#fbf6ea"
       />
       <path
-        d="M276 46h58c4 0 7-3 7-6.5 0-3.2-2.4-5.8-5.6-6.3-1.2-5.2-6-9-11.6-9-4.5 0-8.5 2.4-10.5 6-1.8-.8-3.8-1.2-6-1.2-6.8 0-12.4 5-13.3 11.5h-18c-3 0-5.5 2.5-5.5 5.5Z"
-        fill="#faf4e6"
+        d="M242 42h98c4.5 0 8-3.2 8-7.2 0-3.6-2.8-6.6-6.4-7.1-1.5-5.8-6.8-10-13.2-10-5 0-9.4 2.6-11.8 6.6-2-.9-4.2-1.4-6.6-1.4-7.6 0-13.8 5.6-14.8 12.8H242Z"
+        fill="#fbf6ea"
       />
 
-      {/* Rolling Voronoi meadow hills */}
-      <path d="M0 156 Q68 172 136 204 L0 214 Z" fill="#639a3b" />
-      <path d="M0 174 Q82 184 152 212 L0 222 Z" fill="#7cb547" />
-      <path d="M236 212 Q302 182 360 162 L360 222 Z" fill="#5e9438" />
-      <path d="M224 216 Q292 192 360 184 L360 224 Z" fill="#88bf52" />
+      {/* Patchwork Voronoi meadow hills */}
+      <path d="M0 78 Q92 68 188 94 T360 88 L360 175 L0 175 Z" fill="#88bc52" stroke="#2b2622" strokeWidth="1.5" />
+      <path d="M48 76 Q128 84 176 112 L58 118 Z" fill="#a8d16c" stroke="#2b2622" strokeWidth="1.2" />
+      <path d="M126 98 Q200 84 268 112 L140 124 Z" fill="#d0c25e" stroke="#2b2622" strokeWidth="1.2" />
+      <path d="M0 105 Q110 112 220 132 L360 118 L360 190 L0 190 Z" fill="#6da640" />
 
-      {/* Blossoming pastoral sakura tree */}
+      {/* Meadow pond with reeds on back-left */}
+      <ellipse cx="72" cy="128" rx="42" ry="11" fill="#89bee6" stroke="#4f7c34" strokeWidth="1.8" />
+      <path d="M38 126l-2-12M42 127l1-14M102 127l2-13M106 128l-1-11" stroke="#3f6928" strokeWidth="2" strokeLinecap="round" />
+
+      {/* Blossoming pink sakura tree on right knoll */}
       <g>
-        <path d="M36 177l8-28M42 160l-10-12M41 163l12-11" stroke="#5a3e2e" strokeWidth="4.2" strokeLinecap="round" />
-        <path
-          d="M28 152c-7-3-11-11-8-18 2-5 6-8 11-9 3-6 10-9 17-7 6 1 11 6 12 12 5 3 7 10 4 16-3 6-10 9-16 8-6 2-14 1-20-2Z"
-          fill="#f6a8c1"
-          stroke="#2b2622"
-          strokeWidth="2"
-        />
-        <circle cx="35" cy="134" r="2.5" fill="#fffdf7" />
-        <circle cx="48" cy="132" r="2.2" fill="#fffdf7" />
-        <circle cx="54" cy="144" r="2.4" fill="#fffdf7" />
+        <path d="M318 118l-4-26M315 102l-12-10M316 100l11-11" stroke="#5a3e2e" strokeWidth="3.8" strokeLinecap="round" />
+        <circle cx="302" cy="76" r="14" fill="#f9bfd0" stroke="#2b2622" strokeWidth="1.5" />
+        <circle cx="324" cy="74" r="15" fill="#f9bfd0" stroke="#2b2622" strokeWidth="1.5" />
+        <circle cx="313" cy="63" r="16" fill="#fcd1de" stroke="#2b2622" strokeWidth="1.5" />
       </g>
 
-      {/* Wildflowers along the meadow verge */}
-      <circle cx="18" cy="196" r="3" fill="#ffd166" />
-      <circle cx="48" cy="202" r="2.5" fill="#fffdf7" />
-      <circle cx="64" cy="198" r="2.8" fill="#ff8fa3" />
-      <circle cx="318" cy="204" r="2.6" fill="#fffdf7" />
-      <circle cx="338" cy="198" r="3.2" fill="#ffd166" />
-
-      {/* Sunlit cream-concrete skate plaza with expansion joints & "BAA" stencil */}
-      <path d="M0 208 Q180 202 360 212 L360 270 L0 270 Z" fill="#f1e8d8" stroke="#2b2622" strokeWidth="2" />
-      <line x1="0" y1="234" x2="360" y2="242" stroke="#d5c8b4" strokeWidth="1.6" />
-      <line x1="112" y1="206" x2="82" y2="270" stroke="#d5c8b4" strokeWidth="1.6" />
-      <ellipse cx="78" cy="246" rx="28" ry="10" fill="#ff8fa3" opacity="0.28" />
+      {/* Sunlit cream-concrete skate plaza with expansion joints & pink "BAA" stencil */}
+      <path d="M0 168 L175 136 L360 154 L360 270 L0 270 Z" fill="#f3eadb" stroke="#2b2622" strokeWidth="2" />
+      <line x1="25" y1="164" x2="215" y2="270" stroke="#d5c8b4" strokeWidth="1.5" />
+      <line x1="0" y1="226" x2="290" y2="148" stroke="#d5c8b4" strokeWidth="1.5" />
+      <g transform="translate(94 212) rotate(-22) scale(1 0.62)">
+        <circle cx="0" cy="0" r="36" fill="none" stroke="#f2b6bc" strokeWidth="4.5" strokeDasharray="34 10" />
+        <text x="0" y="9" textAnchor="middle" fill="#f2b6bc" fontFamily="Fredoka, sans-serif" fontWeight="700" fontSize="26">BAA</text>
+      </g>
 
       {/* Coral flatbar grind rail on left plaza */}
       <g>
-        <ellipse cx="68" cy="236" rx="34" ry="7" fill="#d9ccb8" opacity="0.7" />
-        <path d="M42 224v13M94 215v12M36 237h12M88 227h12" stroke="#d95f49" strokeWidth="3.2" strokeLinecap="round" />
-        <path d="M32 223 L102 211" stroke="#ff8c7a" strokeWidth="6.5" strokeLinecap="round" />
-        <path d="M32 223 L102 211" stroke="#2b2622" strokeWidth="2" strokeLinecap="round" />
+        <path d="M34 184v18M82 168v16M126 153v15M28 202h12M76 184h12M120 168h12" stroke="#d95f49" strokeWidth="3.2" strokeLinecap="round" />
+        <path d="M24 184 L132 148" stroke="#ff7c66" strokeWidth="7" strokeLinecap="round" />
+        <path d="M24 184 L132 148" stroke="#2b2622" strokeWidth="2" strokeLinecap="round" />
       </g>
 
       {/* Tipped traffic cone on right plaza */}
-      <g transform="translate(314 236) rotate(56)">
+      <g transform="translate(318 168) rotate(56)">
         <rect x="-11" y="10" width="22" height="5" rx="2" fill="#e07a2e" stroke="#2b2622" strokeWidth="1.8" />
-        <path d="M0 -14 L-8 10 L8 10 Z" fill="#ff9a4d" stroke="#2b2622" strokeWidth="1.8" strokeLinejoin="round" />
+        <path d="M0 -14 L-8 10 L8 10 Z" fill="#ff9240" stroke="#2b2622" strokeWidth="1.8" strokeLinejoin="round" />
         <path d="M-4.5 -1 L4.5 -1 L6 4 L-6 4 Z" fill="#fffdf7" />
       </g>
 
-      {/* Mint Quarter-Pipe Ramp with brushed steel coping & shadow */}
-      <path d="M52 270 Q168 232 232 174 L268 270 Z" fill="url(#ss-hero-ramp)" stroke="#2b2622" strokeWidth="2.6" strokeLinejoin="round" />
-      <path d="M232 174 L268 270 L165 270 Q204 232 232 174 Z" fill="#74bca5" stroke="#2b2622" strokeWidth="2.2" strokeLinejoin="round" />
-      <line x1="48" y1="270" x2="234" y2="174" stroke="#c9ced8" strokeWidth="8.5" strokeLinecap="round" />
-      <line x1="48" y1="270" x2="234" y2="174" stroke="#2b2622" strokeWidth="2.2" strokeLinecap="round" />
+      {/* Mint Quarter-Pipe Ramp with Maple Plywood Side & Brushed Steel Coping */}
+      <path d="M98 260 L185 218 Q218 232 232 204 L360 150 L360 270 L98 270 Z" fill="url(#ss-hero-ramp)" stroke="#2b2622" strokeWidth="2.4" strokeLinejoin="round" />
+      <path d="M198 270 Q222 246 232 204 L284 226 L284 270 Z" fill="#d9a66c" stroke="#2b2622" strokeWidth="2.2" strokeLinejoin="round" />
+      <path d="M284 226 L360 192 L360 270 L284 270 Z" fill="#b8834a" stroke="#2b2622" strokeWidth="2.2" strokeLinejoin="round" />
+      <line x1="232" y1="204" x2="360" y2="148" stroke="#cfd5df" strokeWidth="8" strokeLinecap="round" />
+      <line x1="232" y1="204" x2="360" y2="148" stroke="#2b2622" strokeWidth="2.1" strokeLinecap="round" />
 
-      {/* Dynamic airborne coral skateboard with grip top, trucks & cream urethane wheels */}
-      <g transform="rotate(-21 196 138)">
-        <rect x="114" y="138" width="162" height="14" rx="7" fill="#ff846e" stroke="#2b2622" strokeWidth="2.6" />
-        <path d="M122 139.5h146" stroke="#373540" strokeWidth="4.2" strokeLinecap="round" />
-        {/* Trucks */}
-        <path d="M144 152h14l-3 7h-8ZM226 152h14l-3 7h-8Z" fill="#c6cbd4" stroke="#2b2622" strokeWidth="2" strokeLinejoin="round" />
-        {/* Back & front pairs of urethane wheels */}
-        <circle cx="159" cy="161" r="10.5" fill="#d9cbb7" stroke="#2b2622" strokeWidth="2.2" />
-        <circle cx="241" cy="161" r="10.5" fill="#d9cbb7" stroke="#2b2622" strokeWidth="2.2" />
-        <circle cx="147" cy="163" r="11.5" fill="#f5ecd6" stroke="#2b2622" strokeWidth="2.4" />
-        <circle cx="229" cy="163" r="11.5" fill="#f5ecd6" stroke="#2b2622" strokeWidth="2.4" />
-        <circle cx="147" cy="163" r="3.8" fill="#4a3b35" />
-        <circle cx="229" cy="163" r="3.8" fill="#4a3b35" />
+      {/* Airborne Coral Skateboard with Metallic Trucks & Cream Wheels */}
+      <g transform="rotate(-34 244 176)">
+        <rect x="192" y="168" width="104" height="16" rx="8" fill="#ff8fa3" stroke="#2b2622" strokeWidth="2.4" />
+        <path d="M214 184h12l-2 6h-8ZM264 184h12l-2 6h-8Z" fill="#cfd5df" stroke="#2b2622" strokeWidth="1.8" strokeLinejoin="round" />
+        <circle cx="216" cy="192" r="7.5" fill="#fbf3e1" stroke="#2b2622" strokeWidth="2.1" />
+        <circle cx="268" cy="192" r="7.5" fill="#fbf3e1" stroke="#2b2622" strokeWidth="2.1" />
       </g>
 
-      {/* Four chocolate legs & hooves planted on the deck */}
-      <path d="M150 135l11 16M166 131l11 15M194 119l11 16M216 106l14 15" stroke="#3a2f2b" strokeWidth="9.5" strokeLinecap="round" />
-      <path d="M150 135l11 16M166 131l11 15M194 119l11 16M216 106l14 15" stroke="#2b2622" strokeWidth="2.2" strokeLinecap="round" />
+      {/* Golden Sparkles around the board */}
+      <path d="m190 186 1.5 3.5 3.5 1.5-3.5 1.5-1.5 3.5-1.5-3.5-3.5-1.5 3.5-1.5Z" fill="#ffd166" stroke="#2b2622" strokeWidth="1.1" />
+      <path d="m292 152 1.5 3.5 3.5 1.5-3.5 1.5-1.5 3.5-1.5-3.5-3.5-1.5 3.5-1.5Z" fill="#ffd166" stroke="#2b2622" strokeWidth="1.1" />
 
-      {/* Fluffy multi-lobed wool body with gouache under-shadow */}
-      <circle cx="104" cy="117" r="11" fill="#efe4cf" stroke="#2b2622" strokeWidth="2.3" />
+      {/* Sheep Legs, Fluffy Wool Body, Forelock & Mustard Pom-Pom Beanie */}
+      <path d="M174 118 152 138M244 102 268 90M218 154 218 184M244 134 258 156" stroke="#3a2f2b" strokeWidth="9.5" strokeLinecap="round" />
       <path
-        d="M114 128c-10-4-15-16-11-26 2-6 7-11 13-13 0-12 9-22 21-23 5-10 16-16 28-14 6-7 16-11 26-8 12 3 20 14 19 26 9 5 14 15 11 25-2 9-10 16-19 17-4 9-14 15-24 13-6 7-17 10-26 6-7 5-17 4-24-2-5 2-10 1-14-1Z"
-        fill="#faf4e8"
-        stroke="#2b2622"
-        strokeWidth="2.8"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M118 125c8 7 20 8 29 2 8 6 20 6 28-1 9 4 21 2 28-6"
-        stroke="#e2d3bc"
-        strokeWidth="4.5"
-        strokeLinecap="round"
-      />
-
-      {/* Sculpted cocoa head, ears, deadpan eyes & mustard ribbed knit beanie */}
-      <ellipse cx="192" cy="64" rx="16" ry="7" transform="rotate(-12 192 64)" fill="#3a2f2b" stroke="#2b2622" strokeWidth="2.4" />
-      <ellipse cx="254" cy="63" rx="14" ry="6.5" transform="rotate(12 254 63)" fill="#3a2f2b" stroke="#2b2622" strokeWidth="2.4" />
-      <path
-        d="M210 56c0-14 10-22 21-22s20 8 21 22c1 14-5 31-16 33-11 2-26-14-26-33Z"
-        fill="#3a2f2b"
-        stroke="#2b2622"
-        strokeWidth="2.6"
-      />
-      <circle cx="225" cy="67" r="2.8" fill="#141010" />
-      <circle cx="243" cy="67" r="2.8" fill="#141010" />
-      <circle cx="224" cy="66" r="0.9" fill="#ffffff" />
-      <circle cx="242" cy="66" r="0.9" fill="#ffffff" />
-      <ellipse cx="218" cy="74" rx="3.8" ry="2.2" fill="#ff9fb4" opacity="0.55" />
-      <ellipse cx="248" cy="74" rx="3.8" ry="2.2" fill="#ff9fb4" opacity="0.55" />
-      <path d="M235 79l3 3 3-3M238 82v4" stroke="#221a17" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-
-      {/* Chunky mustard-gold ribbed beanie */}
-      <path
-        d="M198 48c-1-16 9-30 25-31 15-1 28 10 30 27Z"
-        fill="#eeb844"
+        d="M178 156c-9-4-14-15-10-25 2-6 6-10 12-12 0-12 8-22 20-23 5-9 15-15 26-13 6-6 15-10 24-7 11 3 18 13 17 24 8 5 13 14 10 23-2 8-9 15-18 16-4 8-13 14-22 12-6 6-16 9-24 5-6 4-15 3-21-2-5 2-10 1-14 2Z"
+        fill="#fffdf8"
         stroke="#2b2622"
         strokeWidth="2.6"
         strokeLinejoin="round"
       />
-      <rect x="195" y="42" width="60" height="14" rx="6" fill="#f5c756" stroke="#2b2622" strokeWidth="2.4" />
-      <path d="M206 44v10M216 44v10M226 44v10M236 44v10M246 44v10" stroke="#c89226" strokeWidth="2" strokeLinecap="round" />
+      <ellipse cx="192" cy="86" rx="14" ry="5.5" transform="rotate(-12 192 86)" fill="#3a2f2b" stroke="#2b2622" strokeWidth="2.2" />
+      <ellipse cx="250" cy="72" rx="13" ry="5.2" transform="rotate(-18 250 72)" fill="#3a2f2b" stroke="#2b2622" strokeWidth="2.2" />
+      <path d="M208 82c0-13 9-21 20-21s19 8 20 21c1 13-5 28-15 30s-25-12-25-30Z" fill="#3a2f2b" stroke="#2b2622" strokeWidth="2.4" />
+      <circle cx="222" cy="88" r="2.6" fill="#141010" />
+      <circle cx="241" cy="84" r="2.6" fill="#141010" />
+      <ellipse cx="218" cy="95" rx="3.8" ry="2.2" fill="#ff8fa3" />
+      <ellipse cx="245" cy="90" rx="3.2" ry="2" fill="#ff8fa3" />
+      <path d="M206 76c3 2.5 8 2.5 11 0 3 2.2 8 2.2 11 0 3 2 7 1.8 10-.5" fill="#fffdf8" stroke="#2b2622" strokeWidth="2" strokeLinecap="round" />
+      <g transform="rotate(-14 220 58)">
+        <circle cx="218" cy="34" r="10.5" fill="#fffdf8" stroke="#2b2622" strokeWidth="2.2" />
+        <path d="M194 68c1-16 11-26 25-26s24 10 25 26Z" fill="#f4b938" stroke="#2b2622" strokeWidth="2.4" />
+        <rect x="192" y="61" width="54" height="12" rx="5.5" fill="#ffd666" stroke="#2b2622" strokeWidth="2.2" />
+      </g>
     </svg>
   );
 }
@@ -259,7 +221,7 @@ export function TitleScreen() {
               ) : (
                 <img
                   src={`${import.meta.env.BASE_URL}art/title-sheep.png`}
-                  alt="Editorial gouache key art of a deadpan wooly sheep in a mustard beanie catching air off a mint quarter-pipe on a coral skateboard"
+                  alt="Editorial gouache key art of a deadpan wooly sheep in a mustard pom-pom beanie catching air off a mint quarter-pipe on a coral skateboard"
                   onError={() => setImgFailed(true)}
                 />
               )}
