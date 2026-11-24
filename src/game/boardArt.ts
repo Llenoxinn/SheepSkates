@@ -186,6 +186,31 @@ function drawFlameShape(ctx: CanvasRenderingContext2D, w: number, yBase: number,
 /* Underside graphic painters (256 x 512, y=0 Nose -> y=512 Tail)     */
 /* ------------------------------------------------------------------ */
 
+function paintWoodGrainOverlay(ctx: CanvasRenderingContext2D, seed: number) {
+  const r = rng(seed);
+  ctx.save();
+  ctx.lineCap = 'round';
+  for (let i = 0; i < 42; i++) {
+    const x = r() * W;
+    const y0 = r() * H * 0.4;
+    const len = 140 + r() * 260;
+    const sway = (r() - 0.5) * 18;
+    ctx.strokeStyle = i % 2 === 0 ? 'rgba(255,253,245,0.08)' : 'rgba(58,47,43,0.06)';
+    ctx.lineWidth = 1 + r() * 1.4;
+    ctx.beginPath();
+    ctx.moveTo(x, y0);
+    ctx.quadraticCurveTo(x + sway, y0 + len * 0.5, x - sway * 0.5, y0 + len);
+    ctx.stroke();
+  }
+  // Subtle screen-printed collector rim & nose/tail rail bolt markers
+  ctx.strokeStyle = 'rgba(58,47,43,0.18)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.roundRect(10, 14, W - 20, H - 28, 86);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function paintUnderside(art: BoardArt): HTMLCanvasElement {
   const { c, ctx } = makeCanvas();
 
@@ -341,6 +366,7 @@ function paintUnderside(art: BoardArt): HTMLCanvasElement {
     ctx.beginPath(); ctx.ellipse(10, -24, 12, 6, 0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     ctx.restore();
   }
+  paintWoodGrainOverlay(ctx, BOARD_ARTS.indexOf(art) * 31 + 13);
   return c;
 }
 
