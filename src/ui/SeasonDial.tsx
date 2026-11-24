@@ -23,41 +23,42 @@ const SEASON_POS: Record<SeasonId, { cx: number; cy: number; accent: string }> =
 
 const WEATHER_OPTIONS: readonly WeatherMode[] = ['auto', 'clear', 'rain', 'snow', 'fog'];
 
-function SeasonGlyph({ id }: { id: SeasonId }) {
+function SeasonGlyph({ id, active }: { id: SeasonId; active: boolean }) {
   switch (id) {
     case 'spring':
       return (
-        <g stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round">
-          <circle cx="0" cy="-3.2" r="1.7" />
-          <circle cx="3" cy="-1" r="1.7" />
-          <circle cx="1.9" cy="2.6" r="1.7" />
-          <circle cx="-1.9" cy="2.6" r="1.7" />
-          <circle cx="-3" cy="-1" r="1.7" />
-          <circle cx="0" cy="0" r="1" fill="currentColor" stroke="none" />
+        <g stroke="currentColor" strokeWidth="1.45" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="0" cy="-3.2" r="1.9" fill={active ? '#ffd6e6' : '#f5efe6'} />
+          <circle cx="3.1" cy="-1" r="1.9" fill={active ? '#ffd6e6' : '#f5efe6'} />
+          <circle cx="1.9" cy="2.7" r="1.9" fill={active ? '#ffd6e6' : '#f5efe6'} />
+          <circle cx="-1.9" cy="2.7" r="1.9" fill={active ? '#ffd6e6' : '#f5efe6'} />
+          <circle cx="-3.1" cy="-1" r="1.9" fill={active ? '#ffd6e6' : '#f5efe6'} />
+          <circle cx="0" cy="0" r="1.35" fill={active ? '#ffd166' : 'currentColor'} />
         </g>
       );
     case 'summer':
       return (
-        <g stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round">
-          <circle cx="0" cy="0" r="2.6" />
-          <path d="M0-5.2v1.2M0 4v1.2M-5.2 0h1.2M4 0h1.2M-3.7-3.7l.9.9M2.8 2.8l.9.9M3.7-3.7l-.9.9M-2.8 2.8l-.9.9" />
+        <g stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+          <circle cx="0" cy="0" r="2.7" fill={active ? '#ffe285' : '#f5efe6'} />
+          <path d="M0-5.4v1.3M0 4.1v1.3M-5.4 0h1.3M4.1 0h1.3M-3.8-3.8l.95.95M2.85 2.85l.95.95M3.8-3.8l-.95.95M-2.85 2.85l-.95.95" />
         </g>
       );
     case 'autumn':
       return (
-        <path
-          d="M0-5 L1.5-2 L4.5-2.3 L2.6 0.4 L4 2.8 L0.8 2.1 L0 5 L-0.8 2.1 L-4 2.8 L-2.6 0.4 L-4.5-2.3 L-1.5-2 Z"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.45"
-          strokeLinejoin="round"
-        />
+        <g stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <path
+            d="M0-5.2 L1.5-2.1 L4.7-2.4 L2.6 0.4 L4.1 2.8 L0.8 2.1 L0 5.1 L-0.8 2.1 L-4.1 2.8 L-2.6 0.4 L-4.7-2.4 L-1.5-2.1 Z"
+            fill={active ? '#fbd0b0' : '#f5efe6'}
+          />
+          <path d="M0-2.6v5.2" strokeWidth="1.15" />
+        </g>
       );
     case 'winter':
       return (
-        <g stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round">
-          <path d="M0-5v10M-4.3-2.5l8.6 5M4.3-2.5l-8.6 5" />
-          <path d="M-1.3-3.8L0-2.5l1.3-1.3M-1.3 3.8L0 2.5l1.3 1.3" />
+        <g stroke="currentColor" strokeWidth="1.45" fill="none" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M0-5.1v10.2M-4.4-2.55l8.8 5.1M4.4-2.55l-8.8 5.1" />
+          <path d="M-1.3-3.9L0-2.6l1.3-1.3M-1.3 3.9L0 2.6l1.3 1.3" />
+          <circle cx="0" cy="0" r="1.4" fill={active ? '#d8eeff' : '#f5efe6'} />
         </g>
       );
   }
@@ -67,38 +68,41 @@ function WeatherGlyph({ mode }: { mode: WeatherMode }) {
   switch (mode) {
     case 'auto':
       return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-          <path d="M3 3v5h5" />
-          <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
-          <path d="M16 16h5v5" />
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M20.5 11.5a8.5 8.5 0 0 0-14.8-5.7L3.5 8" />
+          <path d="M3.5 3.5V8H8" />
+          <path d="M3.5 12.5a8.5 8.5 0 0 0 14.8 5.7l2.2-2.2" />
+          <path d="M16 16h4.5v4.5" />
+          <circle cx="12" cy="12" r="2.2" fill="#ffd166" stroke="currentColor" strokeWidth="1.5" />
         </svg>
       );
     case 'clear':
       return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <circle cx="12" cy="12" r="4" />
-          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <circle cx="12" cy="12" r="4.4" fill="#ffe073" />
+          <path d="M12 2.2v2.3M12 19.5v2.3M5.1 5.1l1.6 1.6M17.3 17.3l1.6 1.6M2.2 12h2.3M19.5 12h2.3M6.7 17.3l-1.6 1.6M18.9 5.1l-1.6 1.6" />
         </svg>
       );
     case 'rain':
       return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
-          <path d="M16 14v6M8 14v6M12 16v6" />
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M5.5 15.2a4.5 4.5 0 0 1-.8-8.9 6 6 0 0 1 11.6-1.3 4 4 0 0 1 1.7 7.6H5.5Z" fill="#d9eefb" />
+          <path d="M8.5 17.5l-1 3.2M12.5 17.5l-1 3.2M16.5 17.5l-1 3.2" stroke="#3c89d0" strokeWidth="2" />
         </svg>
       );
     case 'snow':
       return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M2 12h20M12 2v20M20 16l-4-4 4-4M4 8l4 4-4 4M16 4l-4 4-4-4M8 20l4-4 4 4" />
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M12 2.5v19M4 7.4l16 9.2M20 7.4 4 16.6" />
+          <path d="m9.5 4.5 2.5 2 2.5-2M9.5 19.5l2.5-2 2.5 2" />
+          <circle cx="12" cy="12" r="2.3" fill="#d9eefb" />
         </svg>
       );
     case 'fog':
       return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 .5 8.973" />
-          <path d="M3 18h18M5 21h14" />
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M5.5 13.8a4.2 4.2 0 0 1-.6-8.3 5.6 5.6 0 0 1 10.9-1.2 3.8 3.8 0 0 1 1.7 7.2H5.5Z" fill="#ebe5da" />
+          <path d="M3.5 17.2h17M5.5 20.4h13" />
         </svg>
       );
   }
@@ -168,7 +172,7 @@ export function SeasonDial({ live = true }: { live?: boolean }) {
                 transform={`translate(${p.cx}, ${p.cy})`}
                 style={{ color: active ? p.accent : '#8b8175', opacity: active ? 1 : 0.72 }}
               >
-                <SeasonGlyph id={id} />
+                <SeasonGlyph id={id} active={active} />
               </g>
             );
           })}
