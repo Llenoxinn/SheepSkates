@@ -47,7 +47,7 @@ export function GouacheDefs() {
       <defs>
         <filter id="ss-gouache-edge" x="-8%" y="-8%" width="116%" height="116%">
           <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7" result="noise" />
-          <feDisplacementMap in="SourceGraphic" in2="noise" scale="0.65" xChannelSelector="R" yChannelSelector="G" />
+          <feDisplacementMap in="SourceGraphic" in2="noise" scale="0.45" xChannelSelector="R" yChannelSelector="G" />
         </filter>
       </defs>
     </svg>
@@ -57,322 +57,381 @@ export function GouacheDefs() {
 const ICONS: Record<ArtIconName, ReactNode> = {
   idle: (
     <>
-      <path d="M12 20v-7" stroke={INK} strokeWidth="2" strokeLinecap="round" />
-      <path d="M12 17c-2.8-.2-4.6-1.8-5-4.2 2.4-.3 4.3 1 5 4.2Z" fill="#8cc155" stroke={INK} strokeWidth="1.6" strokeLinejoin="round" />
-      <circle cx="12" cy="7" r="2.3" fill="#fffdf7" stroke={INK} strokeWidth="1.5" />
-      <circle cx="15.4" cy="9.4" r="2.3" fill="#fffdf7" stroke={INK} strokeWidth="1.5" />
-      <circle cx="14" cy="13" r="2.2" fill="#fffdf7" stroke={INK} strokeWidth="1.5" />
-      <circle cx="10" cy="13" r="2.2" fill="#fffdf7" stroke={INK} strokeWidth="1.5" />
-      <circle cx="8.6" cy="9.4" r="2.3" fill="#fffdf7" stroke={INK} strokeWidth="1.5" />
-      <circle cx="12" cy="10.2" r="2.6" fill="#ffd166" stroke={INK} strokeWidth="1.6" />
+      {/* Meadow daisy with double leaf sprigs & shaded golden button */}
+      <path d="M12 20.5v-8" stroke="#538d32" strokeWidth="2.4" strokeLinecap="round" />
+      <path d="M12 20.5v-8" stroke={INK} strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M12 17.6c-3-.2-4.8-1.8-5.2-4.3 2.5-.3 4.5 1 5.2 4.3Z" fill="#8cc155" stroke={INK} strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M12 18.2c2.6-.2 4.2-1.5 4.6-3.7-2.2-.3-3.9.9-4.6 3.7Z" fill="#a5d66c" stroke={INK} strokeWidth="1.45" strokeLinejoin="round" />
+      <circle cx="12" cy="6.4" r="2.4" fill="#fffdf7" stroke={INK} strokeWidth="1.5" />
+      <circle cx="15.7" cy="9" r="2.4" fill="#fffdf7" stroke={INK} strokeWidth="1.5" />
+      <circle cx="14.3" cy="13" r="2.3" fill="#f7efe0" stroke={INK} strokeWidth="1.5" />
+      <circle cx="9.7" cy="13" r="2.3" fill="#f7efe0" stroke={INK} strokeWidth="1.5" />
+      <circle cx="8.3" cy="9" r="2.4" fill="#fffdf7" stroke={INK} strokeWidth="1.5" />
+      <circle cx="12" cy="9.9" r="2.7" fill="#ffd166" stroke={INK} strokeWidth="1.55" />
+      <path d="M11 8.9a1.4 1.4 0 0 1 1.8-.2" stroke="#fffdf7" strokeWidth="1.1" strokeLinecap="round" />
     </>
   ),
   cruise: (
     <>
-      <path d="M3 10.5h7M2.5 14h5.5" stroke="#7cc6fe" strokeWidth="1.9" strokeLinecap="round" />
-      <path d="M6.5 17.5h13c1.5 0 2.3-.8 2.8-1.8" stroke="#ff8fa3" strokeWidth="3" strokeLinecap="round" />
-      <path d="M6.5 17.5h13c1.5 0 2.3-.8 2.8-1.8" stroke={INK} strokeWidth="1.5" strokeLinecap="round" fill="none" />
-      <circle cx="10" cy="19.2" r="2.1" fill="#6fd0b4" stroke={INK} strokeWidth="1.6" />
-      <circle cx="17.5" cy="19.2" r="2.1" fill="#6fd0b4" stroke={INK} strokeWidth="1.6" />
-      <circle cx="14.2" cy="10.5" r="4.2" fill="#faf4e8" stroke={INK} strokeWidth="1.6" />
-      <circle cx="14.2" cy="10.5" r="1.4" fill="#ffd166" />
+      {/* Rolling cruiser board with wind ribbons, fluffy wool rider & wheel hubs */}
+      <path d="M2.5 9.8h6.2M2 13.2h5.2M3.2 16.4h3.2" stroke="#7cc6fe" strokeWidth="1.85" strokeLinecap="round" />
+      <path d="M11 14c-1.8 0-3.1-1.3-3.1-2.9 0-1.3.9-2.4 2.1-2.7.5-1.6 2-2.7 3.8-2.7 2.1 0 3.8 1.5 4 3.5 1.2.4 2 1.4 2 2.7 0 1.6-1.3 2.8-2.9 2.8H11Z" fill="#faf4e8" stroke={INK} strokeWidth="1.55" strokeLinejoin="round" />
+      <path d="M11.6 12.6c2.1.7 5 .7 7-.1" stroke="#e2d3bc" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M6.2 17.2h13.4c1.5 0 2.4-.7 3-1.8" stroke="#ff8fa3" strokeWidth="3.4" strokeLinecap="round" />
+      <path d="M6.2 17.2h13.4c1.5 0 2.4-.7 3-1.8" stroke={INK} strokeWidth="1.55" strokeLinecap="round" fill="none" />
+      <circle cx="9.6" cy="19.4" r="2.25" fill="#f5ecd6" stroke={INK} strokeWidth="1.55" />
+      <circle cx="17.8" cy="19.4" r="2.25" fill="#f5ecd6" stroke={INK} strokeWidth="1.55" />
+      <circle cx="9.6" cy="19.4" r="0.8" fill="#6fd0b4" />
+      <circle cx="17.8" cy="19.4" r="0.8" fill="#6fd0b4" />
     </>
   ),
   grind: (
     <>
-      <path d="M6.5 15.5v4.5M17.5 15.5v4.5" stroke="#d9cfc0" strokeWidth="2.4" strokeLinecap="round" />
-      <path d="M6.5 15.5v4.5M17.5 15.5v4.5" stroke={INK} strokeWidth="1.4" strokeLinecap="round" />
-      <rect x="2.8" y="13" width="18.4" height="3.2" rx="1.6" fill="#ff8c7a" stroke={INK} strokeWidth="1.6" />
-      <path d="M7.5 10.6 15.8 8.2" stroke="#ffd166" strokeWidth="3" strokeLinecap="round" />
-      <path d="M7.5 10.6 15.8 8.2" stroke={INK} strokeWidth="1.4" strokeLinecap="round" />
-      <path d="M12 4.5v2M15.8 5.2l1.2-1.4M9.2 6l-1.3-1.2" stroke="#ffb703" strokeWidth="1.9" strokeLinecap="round" />
+      {/* Coral flatbar rail with baseplates, locked tilted deck & golden grind sparks */}
+      <path d="M6.5 15.8v4.4M17.5 15.8v4.4M4.6 20.2h3.8M15.6 20.2h3.8" stroke="#c9bfb0" strokeWidth="2.4" strokeLinecap="round" />
+      <path d="M6.5 15.8v4.4M17.5 15.8v4.4M4.6 20.2h3.8M15.6 20.2h3.8" stroke={INK} strokeWidth="1.45" strokeLinecap="round" />
+      <rect x="2.6" y="12.8" width="18.8" height="3.4" rx="1.7" fill="#ff8c7a" stroke={INK} strokeWidth="1.6" />
+      <path d="M5 13.9h14" stroke="#ffb8ad" strokeWidth="1" strokeLinecap="round" />
+      <g transform="rotate(-14 11.8 9.6)">
+        <rect x="5.8" y="8" width="12.4" height="3.1" rx="1.55" fill="#ffd166" stroke={INK} strokeWidth="1.55" />
+        <circle cx="8.5" cy="12" r="1.35" fill="#f5ecd6" stroke={INK} strokeWidth="1.25" />
+        <circle cx="15.5" cy="12" r="1.35" fill="#f5ecd6" stroke={INK} strokeWidth="1.25" />
+      </g>
+      <path d="M12.2 3.6v2.2M16.2 4.6l1.4-1.4M8.4 5.4 7 4" stroke="#ffb703" strokeWidth="1.9" strokeLinecap="round" />
+      <circle cx="18.6" cy="7.8" r="1.1" fill="#ffd166" />
     </>
   ),
   ollie: (
     <>
-      <path d="M6.5 13.5c1.8-4.4 9.2-4.4 11 0" fill="none" stroke="#7cc6fe" strokeWidth="2.1" strokeLinecap="round" />
-      <path d="m15.3 12.6 2.3 1.2.8-2.4" fill="none" stroke={INK} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-      <g transform="rotate(-14 12 16.5)">
-        <rect x="4" y="15" width="16" height="3.2" rx="1.6" fill="#ff8fa3" stroke={INK} strokeWidth="1.6" />
-        <circle cx="7.8" cy="19.3" r="1.5" fill="#f5ecd6" stroke={INK} strokeWidth="1.4" />
-        <circle cx="16.2" cy="19.3" r="1.5" fill="#f5ecd6" stroke={INK} strokeWidth="1.4" />
+      {/* High-arcing trajectory ribbon, popped coral board & tail pop burst */}
+      <path d="M5.5 13.2c2-4.8 9.6-5.2 12.2-.6" fill="none" stroke="#7cc6fe" strokeWidth="2.3" strokeLinecap="round" />
+      <path d="m15.4 11.8 2.6 1.4.8-2.7" fill="none" stroke={INK} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4.2 19.8l1.6-1.4M3.2 17.5l2-.3" stroke="#ffb703" strokeWidth="1.7" strokeLinecap="round" />
+      <g transform="rotate(-18 12.4 16.2)">
+        <rect x="4.2" y="14.4" width="16.4" height="3.4" rx="1.7" fill="#ff8fa3" stroke={INK} strokeWidth="1.6" />
+        <line x1="6.8" y1="15.4" x2="18" y2="15.4" stroke="#ffd6df" strokeWidth="1" strokeLinecap="round" />
+        <circle cx="8" cy="19" r="1.65" fill="#f5ecd6" stroke={INK} strokeWidth="1.4" />
+        <circle cx="16.8" cy="19" r="1.65" fill="#f5ecd6" stroke={INK} strokeWidth="1.4" />
       </g>
     </>
   ),
   kickflip: (
     <>
-      <path d="M7 9.2a5.8 5.8 0 0 1 9.8-1.4" fill="none" stroke="#6fd0b4" strokeWidth="2.2" strokeLinecap="round" />
-      <path d="m17 5 .4 3-3-.4" fill="none" stroke={INK} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-      <g transform="rotate(-22 12 14)">
-        <rect x="4.5" y="12.2" width="15" height="3.4" rx="1.7" fill="#b8b0f2" stroke={INK} strokeWidth="1.6" />
-        <line x1="7" y1="13.9" x2="17" y2="13.9" stroke="#faf4e8" strokeWidth="1.2" strokeLinecap="round" />
+      {/* Helical flip arc, mid-rotation lavender deck & golden star */}
+      <path d="M6.4 9.4a6.2 6.2 0 0 1 10.6-1.6" fill="none" stroke="#6fd0b4" strokeWidth="2.4" strokeLinecap="round" />
+      <path d="m17.2 4.8.5 3.2-3.2-.4" fill="none" stroke={INK} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      <g transform="rotate(-24 12 14.2)">
+        <rect x="4.2" y="12.1" width="15.6" height="3.8" rx="1.9" fill="#b8b0f2" stroke={INK} strokeWidth="1.6" />
+        <path d="M6.6 13.5h10.8" stroke="#faf4e8" strokeWidth="1.3" strokeLinecap="round" />
+        <circle cx="7.8" cy="16.8" r="1.35" fill="#f5ecd6" stroke={INK} strokeWidth="1.25" />
+        <circle cx="16.2" cy="16.8" r="1.35" fill="#f5ecd6" stroke={INK} strokeWidth="1.25" />
       </g>
-      <circle cx="18.2" cy="17.8" r="1.3" fill="#ffd166" stroke={INK} strokeWidth="1.2" />
+      <path d="m18.5 16.2.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6Z" fill="#ffd166" stroke={INK} strokeWidth="1.1" strokeLinejoin="round" />
     </>
   ),
   spin: (
     <>
-      <path d="M18.5 11.8A6.5 6.5 0 1 1 15 6" fill="none" stroke="#ff9f68" strokeWidth="2.4" strokeLinecap="round" />
-      <path d="M18.5 11.8A6.5 6.5 0 1 1 15 6" fill="none" stroke={INK} strokeWidth="1.35" strokeLinecap="round" />
-      <path d="m13.5 3.6 2.8 2-2.2 2.4" fill="#ffd166" stroke={INK} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="m12 9 .8 1.9 2 .8-2 .8L12 14.4l-.8-1.9-2-.8 2-.8Z" fill="#ffd166" stroke={INK} strokeWidth="1.3" strokeLinejoin="round" />
+      {/* 360 vortex ribbon with double stroke, arrowhead & 4-point star core */}
+      <path d="M18.6 12A6.6 6.6 0 1 1 15 6.1" fill="none" stroke="#ff9f68" strokeWidth="2.8" strokeLinecap="round" />
+      <path d="M18.6 12A6.6 6.6 0 1 1 15 6.1" fill="none" stroke={INK} strokeWidth="1.45" strokeLinecap="round" />
+      <path d="m13.6 3.4 3.2 2.2-2.4 2.6Z" fill="#ffd166" stroke={INK} strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="m12 8.6.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9Z" fill="#ffd166" stroke={INK} strokeWidth="1.35" strokeLinejoin="round" />
     </>
   ),
   undo: (
     <>
-      <path d="M8.5 8.5H15a4.8 4.8 0 1 1 0 9.6H10" fill="none" stroke="#7cc6fe" strokeWidth="3.6" strokeLinecap="round" />
-      <path d="M8.5 8.5H15a4.8 4.8 0 1 1 0 9.6H10" fill="none" stroke={INK} strokeWidth="1.6" strokeLinecap="round" />
-      <path d="M9.8 4.6 4.8 8.5l5 3.9Z" fill="#7cc6fe" stroke={INK} strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M8.5 8.5H15a4.8 4.8 0 1 1 0 9.6H9.8" fill="none" stroke="#7cc6fe" strokeWidth="3.8" strokeLinecap="round" />
+      <path d="M8.5 8.5H15a4.8 4.8 0 1 1 0 9.6H9.8" fill="none" stroke={INK} strokeWidth="1.65" strokeLinecap="round" />
+      <path d="M9.8 4.4 4.5 8.5l5.3 4.1Z" fill="#7cc6fe" stroke={INK} strokeWidth="1.6" strokeLinejoin="round" />
     </>
   ),
   redo: (
     <>
-      <path d="M15.5 8.5H9a4.8 4.8 0 1 0 0 9.6h5" fill="none" stroke="#6fd0b4" strokeWidth="3.6" strokeLinecap="round" />
-      <path d="M15.5 8.5H9a4.8 4.8 0 1 0 0 9.6h5" fill="none" stroke={INK} strokeWidth="1.6" strokeLinecap="round" />
-      <path d="m14.2 4.6 5 3.9-5 3.9Z" fill="#6fd0b4" stroke={INK} strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M15.5 8.5H9a4.8 4.8 0 1 0 0 9.6h5.2" fill="none" stroke="#6fd0b4" strokeWidth="3.8" strokeLinecap="round" />
+      <path d="M15.5 8.5H9a4.8 4.8 0 1 0 0 9.6h5.2" fill="none" stroke={INK} strokeWidth="1.65" strokeLinecap="round" />
+      <path d="m14.2 4.4 5.3 4.1-5.3 4.1Z" fill="#6fd0b4" stroke={INK} strokeWidth="1.6" strokeLinejoin="round" />
     </>
   ),
   duplicate: (
     <>
-      <path d="M6.5 14.5c-1.8 0-3-1.2-3-2.9 0-1.4 1-2.5 2.2-2.7.5-1.5 1.8-2.4 3.4-2.4 1.8 0 3.2 1.2 3.4 2.9" fill="#ff8fa3" stroke={INK} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M10.5 18.2h6.8c2 0 3.2-1.3 3.2-3 0-1.4-.9-2.5-2.1-2.8-.4-1.6-1.8-2.8-3.6-2.8-1.6 0-3 .9-3.5 2.3-1.3.3-2.3 1.4-2.3 2.8 0 1.8 1.3 3.5 3.1 3.5Z" fill="#faf4e8" stroke={INK} strokeWidth="1.65" strokeLinejoin="round" />
-      <circle cx="15.8" cy="14.2" r="1.8" fill="#4a3b35" />
+      {/* Back coral clone sheep + front cream wooly sheep with face & ears */}
+      <path d="M6.2 14.4c-1.9 0-3.2-1.3-3.2-3 0-1.4 1-2.5 2.3-2.8.5-1.6 1.9-2.6 3.6-2.6 1.9 0 3.4 1.3 3.6 3.1" fill="#ff8fa3" stroke={INK} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10.4 18.6h6.9c2 0 3.3-1.3 3.3-3.1 0-1.4-.9-2.6-2.1-2.9-.4-1.7-1.9-2.9-3.7-2.9-1.6 0-3.1.9-3.6 2.4-1.3.3-2.3 1.4-2.3 2.9 0 1.9 1.4 3.6 3.5 3.6Z" fill="#faf4e8" stroke={INK} strokeWidth="1.65" strokeLinejoin="round" />
+      <ellipse cx="16.2" cy="14.5" rx="2.5" ry="2.4" fill="#4a3b35" stroke={INK} strokeWidth="1.3" />
+      <circle cx="15.4" cy="14.2" r="0.55" fill="#fff" />
+      <circle cx="17.1" cy="14.2" r="0.55" fill="#fff" />
     </>
   ),
   delete: (
     <>
-      <path d="M6.6 8.2h10.8l-1 10.6a1.8 1.8 0 0 1-1.8 1.6H9.4a1.8 1.8 0 0 1-1.8-1.6L6.6 8.2Z" fill="#f6c9a0" stroke={INK} strokeWidth="1.65" strokeLinejoin="round" />
-      <path d="M4.8 7.6h14.4" stroke={INK} strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M9.4 7.5V5.6c0-.8.6-1.4 1.4-1.4h2.4c.8 0 1.4.6 1.4 1.4v1.9" fill="#ff8fa3" stroke={INK} strokeWidth="1.6" strokeLinejoin="round" />
-      <path d="M10.2 11.4v5.4M13.8 11.4v5.4" stroke={INK} strokeWidth="1.5" strokeLinecap="round" />
+      {/* Gouache bin with coral lid, brass handle & vertical ribs */}
+      <path d="M6.4 8.2h11.2l-1 10.8a1.9 1.9 0 0 1-1.9 1.7H9.3a1.9 1.9 0 0 1-1.9-1.7L6.4 8.2Z" fill="#f6c9a0" stroke={INK} strokeWidth="1.65" strokeLinejoin="round" />
+      <path d="M8.2 9.4v9.4" stroke="#fff4e4" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M9.4 7.6V5.5c0-.8.6-1.4 1.4-1.4h2.4c.8 0 1.4.6 1.4 1.4v2.1" fill="#ffd166" stroke={INK} strokeWidth="1.55" strokeLinejoin="round" />
+      <rect x="4.5" y="6.6" width="15" height="2.4" rx="1.2" fill="#ff8fa3" stroke={INK} strokeWidth="1.6" />
+      <path d="M10.3 11.4v5.4M13.7 11.4v5.4" stroke={INK} strokeWidth="1.55" strokeLinecap="round" />
     </>
   ),
   dropSheep: (
     <>
-      <path d="M5.5 14.5c-1.5-.3-2.5-1.5-2.5-3 0-1.4 1-2.6 2.3-2.9.6-1.7 2.2-2.9 4.2-2.9 1.9 0 3.5 1.1 4.1 2.7 1.3.3 2.2 1.5 2.2 2.9 0 1.7-1.2 3.1-2.9 3.2Z" fill="#faf4e8" stroke={INK} strokeWidth="1.6" strokeLinejoin="round" />
-      <ellipse cx="9.6" cy="13.5" rx="3.4" ry="3.6" fill="#4a3b35" stroke={INK} strokeWidth="1.5" />
+      {/* Fluffy sheep with ears, eyes, rosy cheeks & golden + spawn coin */}
+      <path d="M5.4 14.8c-1.6-.3-2.6-1.6-2.6-3.1 0-1.5 1-2.7 2.4-3 .6-1.8 2.3-3 4.3-3 2 0 3.6 1.1 4.2 2.8 1.4.3 2.3 1.5 2.3 3 0 1.8-1.3 3.2-3 3.3Z" fill="#faf4e8" stroke={INK} strokeWidth="1.6" strokeLinejoin="round" />
+      <ellipse cx="6.2" cy="12.2" rx="1.6" ry="0.9" transform="rotate(-18 6.2 12.2)" fill="#4a3b35" stroke={INK} strokeWidth="1.2" />
+      <ellipse cx="13" cy="12.2" rx="1.6" ry="0.9" transform="rotate(18 13 12.2)" fill="#4a3b35" stroke={INK} strokeWidth="1.2" />
+      <ellipse cx="9.6" cy="13.5" rx="3.4" ry="3.5" fill="#4a3b35" stroke={INK} strokeWidth="1.5" />
       <circle cx="8.3" cy="13" r="0.8" fill="#fff" />
       <circle cx="10.9" cy="13" r="0.8" fill="#fff" />
-      <circle cx="7.4" cy="14.5" r="0.8" fill="#ff9fb4" />
-      <circle cx="11.8" cy="14.5" r="0.8" fill="#ff9fb4" />
-      <circle cx="18.2" cy="17.2" r="3.8" fill="#ffd166" stroke={INK} strokeWidth="1.5" />
-      <path d="M18.2 15.4v3.6M16.4 17.2h3.6" stroke={INK} strokeWidth="1.7" strokeLinecap="round" />
+      <circle cx="7.4" cy="14.5" r="0.75" fill="#ff9fb4" />
+      <circle cx="11.8" cy="14.5" r="0.75" fill="#ff9fb4" />
+      <circle cx="18.2" cy="17.2" r="4" fill="#ffd166" stroke={INK} strokeWidth="1.55" />
+      <path d="M18.2 15.3v3.8M16.3 17.2h3.8" stroke={INK} strokeWidth="1.75" strokeLinecap="round" />
     </>
   ),
   howToPlay: (
     <>
-      <path d="M3.5 6.4c2.8-1.2 5.8-.9 8.5.7 2.7-1.6 5.7-1.9 8.5-.7v11.8c-2.8-1.1-5.8-.8-8.5.7-2.7-1.5-5.7-1.8-8.5-.7V6.4Z" fill="#fff7df" stroke={INK} strokeWidth="1.65" strokeLinejoin="round" />
-      <path d="M12 7.1v11.8" stroke={INK} strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M6 10.2h3.6M6 13.4h3.2" stroke="#7cb547" strokeWidth="1.6" strokeLinecap="round" />
-      <path d="M15.2 6.2v6.6l1.5-1.1 1.5 1.1V6.2" fill="#ff8fa3" stroke={INK} strokeWidth="1.4" strokeLinejoin="round" />
+      {/* Open field guide hardcover with meadow lines & coral bookmark */}
+      <path d="M3.2 6.4c2.9-1.2 6-.9 8.8.8 2.8-1.7 5.9-2 8.8-.8v12c-2.9-1.1-6-.8-8.8.8-2.8-1.6-5.9-1.9-8.8-.8V6.4Z" fill="#fff7df" stroke={INK} strokeWidth="1.65" strokeLinejoin="round" />
+      <path d="M12 7.2v12" stroke={INK} strokeWidth="1.55" strokeLinecap="round" />
+      <path d="M5.8 10.2h3.8M5.8 13.2h3.4M5.8 16h2.4" stroke="#7cb547" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M15.2 6.1v7l1.6-1.2 1.6 1.2v-7" fill="#ff8fa3" stroke={INK} strokeWidth="1.45" strokeLinejoin="round" />
     </>
   ),
   soundOn: (
     <>
       <path d="M4.2 9.4h3.2l4.8-3.6v12.4l-4.8-3.6H4.2a1.2 1.2 0 0 1-1.2-1.2v-2.8a1.2 1.2 0 0 1 1.2-1.2Z" fill="#f6c9a0" stroke={INK} strokeWidth="1.65" strokeLinejoin="round" />
-      <path d="M15.4 9.2a4.4 4.4 0 0 1 0 5.6" fill="none" stroke="#6fd0b4" strokeWidth="2.1" strokeLinecap="round" />
-      <path d="M18.2 6.8a7.8 7.8 0 0 1 0 10.4" fill="none" stroke="#ffd166" strokeWidth="2.1" strokeLinecap="round" />
+      <path d="M7.4 9.6v4.8" stroke={INK} strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M15.4 9.2a4.4 4.4 0 0 1 0 5.6" fill="none" stroke="#6fd0b4" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M18.3 6.7a7.8 7.8 0 0 1 0 10.6" fill="none" stroke="#ffd166" strokeWidth="2.2" strokeLinecap="round" />
     </>
   ),
   soundOff: (
     <>
       <path d="M4.2 9.4h3.2l4.8-3.6v12.4l-4.8-3.6H4.2a1.2 1.2 0 0 1-1.2-1.2v-2.8a1.2 1.2 0 0 1 1.2-1.2Z" fill="#dfd5c6" stroke={INK} strokeWidth="1.65" strokeLinejoin="round" />
-      <path d="m16 9.5 5 5M21 9.5l-5 5" stroke="#d94f34" strokeWidth="2.1" strokeLinecap="round" />
+      <path d="M7.4 9.6v4.8" stroke={INK} strokeWidth="1.3" strokeLinecap="round" />
+      <path d="m15.8 9.4 5.2 5.2M21 9.4l-5.2 5.2" stroke="#d94f34" strokeWidth="2.2" strokeLinecap="round" />
     </>
   ),
   play: (
-    <path
-      d="M7.6 5.4c0-1 1.1-1.6 2-1.1l9.7 6.1c.8.5.8 1.7 0 2.2l-9.7 6.1c-.9.5-2-.1-2-1.1Z"
-      fill="currentColor"
-      stroke={INK}
-      strokeWidth="1.7"
-      strokeLinejoin="round"
-    />
+    <>
+      <path
+        d="M7.4 5.2c0-1.1 1.2-1.7 2.1-1.1l9.9 6.2c.8.5.8 1.8 0 2.3l-9.9 6.2c-.9.6-2.1 0-2.1-1.1Z"
+        fill="currentColor"
+        stroke={INK}
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+      <path d="M9.6 7.5 16.2 11.6" stroke="#fffdf7" strokeWidth="1.2" strokeLinecap="round" opacity="0.65" />
+    </>
   ),
   close: (
-    <path d="m7 7 10 10M17 7 7 17" stroke={INK} strokeWidth="2.2" strokeLinecap="round" />
+    <>
+      <path d="m6.8 6.8 10.4 10.4M17.2 6.8 6.8 17.2" stroke="#ff8fa3" strokeWidth="3.4" strokeLinecap="round" />
+      <path d="m6.8 6.8 10.4 10.4M17.2 6.8 6.8 17.2" stroke={INK} strokeWidth="2" strokeLinecap="round" />
+    </>
   ),
   build: (
     <>
-      <path d="M4.5 14.5 12 18.8l7.5-4.3-7.5-4.2Z" fill="#9fd8c6" stroke={INK} strokeWidth="1.6" strokeLinejoin="round" />
-      <path d="m6.5 9.8 5.5 3.1 5.5-3.1-5.5-3.1Z" fill="#ffd166" stroke={INK} strokeWidth="1.6" strokeLinejoin="round" />
+      {/* Stacked isometric diorama blocks with gouache faces */}
+      <path d="M4.2 14.4 12 18.8l7.8-4.4L12 10Z" fill="#9fd8c6" stroke={INK} strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M4.2 14.4v3.2L12 22l7.8-4.4v-3.2L12 18.8Z" fill="#6fd0b4" stroke={INK} strokeWidth="1.55" strokeLinejoin="round" />
+      <path d="m6.4 8.6 5.6 3.2 5.6-3.2L12 5.4Z" fill="#ffe07d" stroke={INK} strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M6.4 8.6v2.8L12 14.6l5.6-3.2V8.6L12 11.8Z" fill="#ffd166" stroke={INK} strokeWidth="1.55" strokeLinejoin="round" />
     </>
   ),
   move: (
     <>
-      <path d="M12 3.8v16.4M3.8 12h16.4" stroke="#7cc6fe" strokeWidth="3.2" strokeLinecap="round" />
+      <path d="M12 3.8v16.4M3.8 12h16.4" stroke="#7cc6fe" strokeWidth="3.4" strokeLinecap="round" />
       <path d="M12 3.8v16.4M3.8 12h16.4" stroke={INK} strokeWidth="1.5" strokeLinecap="round" />
       <path d="m9.4 6.2 2.6-2.8 2.6 2.8M9.4 17.8l2.6 2.8 2.6-2.8M6.2 9.4 3.4 12l2.8 2.6M17.8 9.4l2.8 2.6-2.8 2.6" stroke={INK} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="12" cy="12" r="2.2" fill="#ffd166" stroke={INK} strokeWidth="1.4" />
+      <circle cx="12" cy="12" r="2.4" fill="#ffd166" stroke={INK} strokeWidth="1.45" />
     </>
   ),
   rotL: (
     <>
-      <path d="M7 9.4a6.5 6.5 0 1 1-1.2 6.8" fill="none" stroke="#b8b0f2" strokeWidth="3.2" strokeLinecap="round" />
+      <path d="M7 9.4a6.5 6.5 0 1 1-1.2 6.8" fill="none" stroke="#b8b0f2" strokeWidth="3.4" strokeLinecap="round" />
       <path d="M7 9.4a6.5 6.5 0 1 1-1.2 6.8" fill="none" stroke={INK} strokeWidth="1.55" strokeLinecap="round" />
-      <path d="M5 4.8v4.8h4.8Z" fill="#b8b0f2" stroke={INK} strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M4.8 4.6v5h5Z" fill="#b8b0f2" stroke={INK} strokeWidth="1.55" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="1.6" fill="#ffd166" stroke={INK} strokeWidth="1.2" />
     </>
   ),
   rotR: (
     <>
-      <path d="M17 9.4a6.5 6.5 0 1 0 1.2 6.8" fill="none" stroke="#f6c9a0" strokeWidth="3.2" strokeLinecap="round" />
+      <path d="M17 9.4a6.5 6.5 0 1 0 1.2 6.8" fill="none" stroke="#f6c9a0" strokeWidth="3.4" strokeLinecap="round" />
       <path d="M17 9.4a6.5 6.5 0 1 0 1.2 6.8" fill="none" stroke={INK} strokeWidth="1.55" strokeLinecap="round" />
-      <path d="M19 4.8v4.8h-4.8Z" fill="#f6c9a0" stroke={INK} strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M19.2 4.6v5h-5Z" fill="#f6c9a0" stroke={INK} strokeWidth="1.55" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="1.6" fill="#ffd166" stroke={INK} strokeWidth="1.2" />
     </>
   ),
   save: (
     <>
-      <rect x="4.5" y="4.5" width="15" height="15" rx="3" fill="#faf4e8" stroke={INK} strokeWidth="1.6" />
-      <rect x="7.5" y="4.5" width="9" height="4.8" rx="1.2" fill="#9fd8c6" stroke={INK} strokeWidth="1.4" />
-      <path d="M12 11.4v4.8m-2.4-2.1 2.4 2.4 2.4-2.4" stroke="#d94f34" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="4.2" y="4.2" width="15.6" height="15.6" rx="3.2" fill="#faf4e8" stroke={INK} strokeWidth="1.65" />
+      <rect x="7.4" y="4.2" width="9.2" height="5" rx="1.3" fill="#9fd8c6" stroke={INK} strokeWidth="1.45" />
+      <path d="M12 11.2v5m-2.5-2.2 2.5 2.5 2.5-2.5" stroke="#d94f34" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
     </>
   ),
   load: (
     <>
-      <path d="M4 7.5c0-1 .8-1.8 1.8-1.8h4l1.6 1.8h6.8c1 0 1.8.8 1.8 1.8v8.4c0 1-.8 1.8-1.8 1.8H5.8c-1 0-1.8-.8-1.8-1.8Z" fill="#f6c9a0" stroke={INK} strokeWidth="1.6" strokeLinejoin="round" />
-      <path d="M12 16v-4.8m-2.4 2.1L12 10.9l2.4 2.4" stroke="#3a7d44" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3.8 7.5c0-1 .8-1.8 1.8-1.8h4.2l1.6 1.8h7c1 0 1.8.8 1.8 1.8v8.6c0 1-.8 1.8-1.8 1.8H5.6c-1 0-1.8-.8-1.8-1.8Z" fill="#f6c9a0" stroke={INK} strokeWidth="1.65" strokeLinejoin="round" />
+      <path d="M4.2 10.2h15.6" stroke="#e4b082" strokeWidth="1.2" />
+      <path d="M12 16.4v-5m-2.5 2.2 2.5-2.5 2.5 2.5" stroke="#3a7d44" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
     </>
   ),
   share: (
     <>
-      <circle cx="17.2" cy="6.6" r="2.6" fill="#ff8fa3" stroke={INK} strokeWidth="1.5" />
-      <circle cx="6.8" cy="12" r="2.6" fill="#ffd166" stroke={INK} strokeWidth="1.5" />
-      <circle cx="17.2" cy="17.4" r="2.6" fill="#7cc6fe" stroke={INK} strokeWidth="1.5" />
-      <path d="m9.2 10.8 5.6-3M9.2 13.2l5.6 3" stroke={INK} strokeWidth="1.7" strokeLinecap="round" />
+      <path d="m9 10.8 6-3.2M9 13.2l6 3.2" stroke={INK} strokeWidth="1.85" strokeLinecap="round" />
+      <circle cx="17.2" cy="6.5" r="2.8" fill="#ff8fa3" stroke={INK} strokeWidth="1.55" />
+      <circle cx="6.6" cy="12" r="2.8" fill="#ffd166" stroke={INK} strokeWidth="1.55" />
+      <circle cx="17.2" cy="17.5" r="2.8" fill="#7cc6fe" stroke={INK} strokeWidth="1.55" />
     </>
   ),
   reset: (
     <>
-      <path d="M5.5 9.5a7.2 7.2 0 1 1-.6 6.2" fill="none" stroke="#ff9f68" strokeWidth="3" strokeLinecap="round" />
-      <path d="M5.5 9.5a7.2 7.2 0 1 1-.6 6.2" fill="none" stroke={INK} strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M4.4 5v4.6H9Z" fill="#ffd166" stroke={INK} strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="M5.5 9.5a7.2 7.2 0 1 1-.6 6.2" fill="none" stroke="#ff9f68" strokeWidth="3.2" strokeLinecap="round" />
+      <path d="M5.5 9.5a7.2 7.2 0 1 1-.6 6.2" fill="none" stroke={INK} strokeWidth="1.55" strokeLinecap="round" />
+      <path d="M4.2 4.8v4.8H9Z" fill="#ffd166" stroke={INK} strokeWidth="1.5" strokeLinejoin="round" />
     </>
   ),
   ramp: (
     <>
-      <path d="M4 18.5h16v-8.5h-4.5c-3 0-6.2 3.2-11.5 8.5Z" fill="#9fd8c6" stroke={INK} strokeWidth="1.65" strokeLinejoin="round" />
-      <circle cx="15.4" cy="10" r="1.6" fill="#d9dfe8" stroke={INK} strokeWidth="1.3" />
+      {/* 3D Isometric Mint Quarter-Pipe with maple plywood side & steel coping */}
+      <path d="M3.5 18.8h12.8V9.6h-3.2c-2.6 0-5.4 3.4-9.6 9.2Z" fill="#9fd8c6" stroke={INK} strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M16.3 9.6h3.8v9.2h-3.8Z" fill="#e5c496" stroke={INK} strokeWidth="1.6" strokeLinejoin="round" />
+      <circle cx="13.2" cy="9.6" r="1.65" fill="#d9dfe8" stroke={INK} strokeWidth="1.35" />
     </>
   ),
   rail: (
     <>
-      <path d="M6.5 11.8V18M17.5 11.8V18M4.5 18h4M15.5 18h4" stroke={INK} strokeWidth="1.7" strokeLinecap="round" />
-      <rect x="3" y="9" width="18" height="3.2" rx="1.6" fill="#ff8c7a" stroke={INK} strokeWidth="1.6" />
+      {/* 3D Coral Grind Rail with vertical posts & baseplates */}
+      <path d="M6.5 12v6.2M17.5 12v6.2M4.4 18.2h4.2M15.4 18.2h4.2" stroke={INK} strokeWidth="1.75" strokeLinecap="round" />
+      <rect x="2.8" y="8.8" width="18.4" height="3.4" rx="1.7" fill="#ff8c7a" stroke={INK} strokeWidth="1.65" />
+      <path d="M5.2 10h13.6" stroke="#ffc2b8" strokeWidth="1.1" strokeLinecap="round" />
     </>
   ),
   ledge: (
     <>
-      <rect x="4" y="10" width="16" height="8" rx="2.4" fill="#b8b0f2" stroke={INK} strokeWidth="1.65" />
-      <line x1="6" y1="12.5" x2="18" y2="12.5" stroke="#e4e0fb" strokeWidth="1.5" strokeLinecap="round" />
+      {/* 3D Lavender Funbox Ledge with top deck & steel grind coping */}
+      <path d="M3.8 11.4 7 8.4h13.2l-3.2 3Z" fill="#d3cdf9" stroke={INK} strokeWidth="1.55" strokeLinejoin="round" />
+      <rect x="3.8" y="11.4" width="13.2" height="7" rx="1.4" fill="#b8b0f2" stroke={INK} strokeWidth="1.65" />
+      <path d="M17 11.4 20.2 8.4v7l-3.2 3Z" fill="#988ee6" stroke={INK} strokeWidth="1.55" strokeLinejoin="round" />
+      <line x1="4.5" y1="11.4" x2="16.4" y2="11.4" stroke="#eef2f8" strokeWidth="1.9" strokeLinecap="round" />
     </>
   ),
   cone: (
     <>
-      <rect x="5.2" y="17.2" width="13.6" height="2.4" rx="1.2" fill="#ff9a4d" stroke={INK} strokeWidth="1.4" />
-      <path d="M12 4.5 7.4 17.2h9.2Z" fill="#ff9a4d" stroke={INK} strokeWidth="1.6" strokeLinejoin="round" />
-      <path d="M9.6 11.2h4.8l.9 2.6H8.7Z" fill="#fff7ea" stroke={INK} strokeWidth="1.2" strokeLinejoin="round" />
+      {/* Striped traffic cone with 3D base flange */}
+      <rect x="4.8" y="17.2" width="14.4" height="2.6" rx="1.3" fill="#ff9a4d" stroke={INK} strokeWidth="1.5" />
+      <path d="M12 4.2 7.2 17.2h9.6Z" fill="#ff9a4d" stroke={INK} strokeWidth="1.65" strokeLinejoin="round" />
+      <path d="M9.4 10.6h5.2l1 2.8H8.4Z" fill="#fff7ea" stroke={INK} strokeWidth="1.3" strokeLinejoin="round" />
     </>
   ),
   bench: (
     <>
-      <path d="M7 13v5M17 13v5M7 15.5h10" stroke={INK} strokeWidth="1.7" strokeLinecap="round" />
-      <rect x="3.5" y="9.5" width="17" height="3.6" rx="1.4" fill="#f6c9a0" stroke={INK} strokeWidth="1.6" />
+      {/* Warm timber park bench with backrest, seat & wrought-iron legs */}
+      <path d="M6.8 13.4v5.2M17.2 13.4v5.2M6.8 16h10.4" stroke={INK} strokeWidth="1.75" strokeLinecap="round" />
+      <rect x="4.2" y="7.2" width="15.6" height="2.8" rx="1.1" fill="#e5b586" stroke={INK} strokeWidth="1.5" />
+      <rect x="3.2" y="10.4" width="17.6" height="3.2" rx="1.3" fill="#f6c9a0" stroke={INK} strokeWidth="1.6" />
     </>
   ),
   tree: (
     <>
-      <path d="M12 19.5v-5.5" stroke="#7a5636" strokeWidth="2.8" strokeLinecap="round" />
-      <path d="M12 19.5v-5.5" stroke={INK} strokeWidth="1.3" strokeLinecap="round" />
-      <circle cx="8.5" cy="11.2" r="3.4" fill="#7cb547" stroke={INK} strokeWidth="1.4" />
-      <circle cx="15.5" cy="11.2" r="3.4" fill="#7cb547" stroke={INK} strokeWidth="1.4" />
-      <circle cx="12" cy="8.2" r="4.4" fill="#9fd164" stroke={INK} strokeWidth="1.5" />
+      {/* Multi-sphere pastoral tree with forked trunk & sun highlights */}
+      <path d="M12 20v-6.2M12 16l-2-1.8M12 15.5l2-1.5" stroke="#7a5636" strokeWidth="2.6" strokeLinecap="round" />
+      <path d="M12 20v-6.2" stroke={INK} strokeWidth="1.35" strokeLinecap="round" />
+      <circle cx="8.3" cy="11.4" r="3.5" fill="#7cb547" stroke={INK} strokeWidth="1.45" />
+      <circle cx="15.7" cy="11.4" r="3.5" fill="#7cb547" stroke={INK} strokeWidth="1.45" />
+      <circle cx="12" cy="8" r="4.5" fill="#9fd164" stroke={INK} strokeWidth="1.55" />
+      <circle cx="10.6" cy="6.6" r="1.1" fill="#d7f2a7" />
     </>
   ),
   boardStreet: (
     <>
       <g transform="rotate(30 12 12)">
-        <rect x="7.4" y="6.8" width="1.8" height="2.4" rx="0.7" fill="#f5ecd6" stroke={INK} strokeWidth="1.1" />
-        <rect x="14.8" y="6.8" width="1.8" height="2.4" rx="0.7" fill="#f5ecd6" stroke={INK} strokeWidth="1.1" />
-        <rect x="7.4" y="14.8" width="1.8" height="2.4" rx="0.7" fill="#f5ecd6" stroke={INK} strokeWidth="1.1" />
-        <rect x="14.8" y="14.8" width="1.8" height="2.4" rx="0.7" fill="#f5ecd6" stroke={INK} strokeWidth="1.1" />
-        <rect x="8.8" y="3" width="6.4" height="18" rx="3.2" fill="#ff8fa3" stroke={INK} strokeWidth="1.6" />
+        <rect x="7.3" y="6.6" width="1.9" height="2.5" rx="0.7" fill="#f5ecd6" stroke={INK} strokeWidth="1.1" />
+        <rect x="14.8" y="6.6" width="1.9" height="2.5" rx="0.7" fill="#f5ecd6" stroke={INK} strokeWidth="1.1" />
+        <rect x="7.3" y="14.9" width="1.9" height="2.5" rx="0.7" fill="#f5ecd6" stroke={INK} strokeWidth="1.1" />
+        <rect x="14.8" y="14.9" width="1.9" height="2.5" rx="0.7" fill="#f5ecd6" stroke={INK} strokeWidth="1.1" />
+        <rect x="8.7" y="2.8" width="6.6" height="18.4" rx="3.3" fill="#ff8fa3" stroke={INK} strokeWidth="1.6" />
         <rect x="9.9" y="5" width="4.2" height="14" rx="2.1" fill="#3b3944" />
+        <circle cx="12" cy="12" r="1.2" fill="#ffd166" />
       </g>
     </>
   ),
   boardCruiser: (
     <>
       <g transform="rotate(30 12 12)">
-        <rect x="7.2" y="7" width="2" height="2.6" rx="0.8" fill="#faf4e8" stroke={INK} strokeWidth="1.1" />
-        <rect x="14.8" y="7" width="2" height="2.6" rx="0.8" fill="#faf4e8" stroke={INK} strokeWidth="1.1" />
-        <rect x="7.5" y="14.8" width="2" height="2.6" rx="0.8" fill="#faf4e8" stroke={INK} strokeWidth="1.1" />
-        <rect x="14.5" y="14.8" width="2" height="2.6" rx="0.8" fill="#faf4e8" stroke={INK} strokeWidth="1.1" />
+        <rect x="7.1" y="6.8" width="2" height="2.6" rx="0.8" fill="#faf4e8" stroke={INK} strokeWidth="1.1" />
+        <rect x="14.9" y="6.8" width="2" height="2.6" rx="0.8" fill="#faf4e8" stroke={INK} strokeWidth="1.1" />
+        <rect x="7.4" y="14.8" width="2" height="2.6" rx="0.8" fill="#faf4e8" stroke={INK} strokeWidth="1.1" />
+        <rect x="14.6" y="14.8" width="2" height="2.6" rx="0.8" fill="#faf4e8" stroke={INK} strokeWidth="1.1" />
         <path
-          d="M12 3.2c2.6 0 3.7 2.2 3.6 5.1-.1 2.9-.8 6.4-.4 12.1L12 17.6 8.8 20.4c.4-5.7-.3-9.2-.4-12.1-.1-2.9 1-5.1 3.6-5.1Z"
+          d="M12 3c2.7 0 3.8 2.2 3.7 5.2-.1 2.9-.8 6.4-.4 12.2L12 17.6 8.7 20.4c.4-5.8-.3-9.3-.4-12.2C8.2 5.2 9.3 3 12 3Z"
           fill="#6fd0b4"
           stroke={INK}
           strokeWidth="1.6"
           strokeLinejoin="round"
         />
-        <path d="M12 5.4v10.2" stroke="#faf4e8" strokeWidth="1.3" strokeLinecap="round" />
+        <path d="M12 5.2v10.4" stroke="#faf4e8" strokeWidth="1.4" strokeLinecap="round" />
       </g>
     </>
   ),
   boardOldschool: (
     <>
       <g transform="rotate(30 12 12)">
-        <rect x="6.5" y="7.1" width="2" height="2.5" rx="0.7" fill="#2f2c35" stroke={INK} strokeWidth="1.1" />
-        <rect x="15.5" y="7.1" width="2" height="2.5" rx="0.7" fill="#2f2c35" stroke={INK} strokeWidth="1.1" />
-        <rect x="6.5" y="14.9" width="2" height="2.5" rx="0.7" fill="#2f2c35" stroke={INK} strokeWidth="1.1" />
-        <rect x="15.5" y="14.9" width="2" height="2.5" rx="0.7" fill="#2f2c35" stroke={INK} strokeWidth="1.1" />
+        <rect x="6.4" y="7" width="2" height="2.5" rx="0.7" fill="#2f2c35" stroke={INK} strokeWidth="1.1" />
+        <rect x="15.6" y="7" width="2" height="2.5" rx="0.7" fill="#2f2c35" stroke={INK} strokeWidth="1.1" />
+        <rect x="6.4" y="14.9" width="2" height="2.5" rx="0.7" fill="#2f2c35" stroke={INK} strokeWidth="1.1" />
+        <rect x="15.6" y="14.9" width="2" height="2.5" rx="0.7" fill="#2f2c35" stroke={INK} strokeWidth="1.1" />
         <path
-          d="M12 2.8c2.2 1.2 3.9 3.2 4.1 5.7.1 1.6-.9 2.8-.9 4.2 0 1.7 1.1 3.2.8 5.5l-.9 2.2H8.9l-.9-2.2c-.3-2.3.8-3.8.8-5.5 0-1.4-1-2.6-.9-4.2.2-2.5 1.9-4.5 4.1-5.7Z"
+          d="M12 2.6c2.3 1.2 4 3.2 4.2 5.8.1 1.6-.9 2.8-.9 4.2 0 1.7 1.1 3.2.8 5.5l-.9 2.3H8.8l-.9-2.3c-.3-2.3.8-3.8.8-5.5 0-1.4-1-2.6-.9-4.2.2-2.6 1.9-4.6 4.2-5.8Z"
           fill="#ffd166"
           stroke={INK}
           strokeWidth="1.6"
           strokeLinejoin="round"
         />
-        <rect x="9.6" y="7" width="4.8" height="10.4" rx="1.6" fill="#3b3944" />
+        <rect x="9.6" y="6.8" width="4.8" height="10.6" rx="1.6" fill="#3b3944" />
+        <line x1="9.6" y1="12" x2="14.4" y2="12" stroke="#ff8fa3" strokeWidth="1.3" />
       </g>
     </>
   ),
   boardPintail: (
     <>
       <g transform="rotate(30 12 12)">
-        <rect x="7.8" y="6.2" width="2" height="2.8" rx="0.8" fill="#f4cf86" stroke={INK} strokeWidth="1.1" />
-        <rect x="14.2" y="6.2" width="2" height="2.8" rx="0.8" fill="#f4cf86" stroke={INK} strokeWidth="1.1" />
-        <rect x="7.8" y="15" width="2" height="2.8" rx="0.8" fill="#f4cf86" stroke={INK} strokeWidth="1.1" />
-        <rect x="14.2" y="15" width="2" height="2.8" rx="0.8" fill="#f4cf86" stroke={INK} strokeWidth="1.1" />
+        <rect x="7.7" y="6" width="2" height="2.8" rx="0.8" fill="#f4cf86" stroke={INK} strokeWidth="1.1" />
+        <rect x="14.3" y="6" width="2" height="2.8" rx="0.8" fill="#f4cf86" stroke={INK} strokeWidth="1.1" />
+        <rect x="7.7" y="15.2" width="2" height="2.8" rx="0.8" fill="#f4cf86" stroke={INK} strokeWidth="1.1" />
+        <rect x="14.3" y="15.2" width="2" height="2.8" rx="0.8" fill="#f4cf86" stroke={INK} strokeWidth="1.1" />
         <path
-          d="M12 2c2.5 2.4 3.4 5.5 3.3 9.2-.1 3.8-1 7.6-3.3 10.8-2.3-3.2-3.2-7-3.3-10.8C8.6 7.5 9.5 4.4 12 2Z"
+          d="M12 1.8c2.6 2.5 3.5 5.6 3.4 9.4-.1 3.8-1 7.6-3.4 11-2.4-3.4-3.3-7.2-3.4-11-.1-3.8.8-6.9 3.4-9.4Z"
           fill="#a59cf5"
           stroke={INK}
           strokeWidth="1.6"
           strokeLinejoin="round"
         />
-        <path d="M12 4.6v14.8" stroke="#f7efe0" strokeWidth="1.3" strokeLinecap="round" />
+        <path d="M12 4.5v15" stroke="#f7efe0" strokeWidth="1.35" strokeLinecap="round" />
       </g>
     </>
   ),
   deck: (
     <g transform="rotate(28 12 12)">
-      <rect x="6.9" y="6.6" width="2.2" height="2.7" rx="0.8" fill="#ffe066" stroke={INK} strokeWidth="1.15" />
-      <rect x="14.9" y="6.6" width="2.2" height="2.7" rx="0.8" fill="#ffe066" stroke={INK} strokeWidth="1.15" />
-      <rect x="6.9" y="14.7" width="2.2" height="2.7" rx="0.8" fill="#ffe066" stroke={INK} strokeWidth="1.15" />
-      <rect x="14.9" y="14.7" width="2.2" height="2.7" rx="0.8" fill="#ffe066" stroke={INK} strokeWidth="1.15" />
-      <rect x="8.3" y="2.6" width="7.4" height="18.8" rx="3.7" fill="#ff947c" stroke={INK} strokeWidth="1.6" />
-      <rect x="9.8" y="5.2" width="4.4" height="13.6" rx="2.2" fill="#373540" />
+      <rect x="6.8" y="6.5" width="2.2" height="2.7" rx="0.8" fill="#ffe066" stroke={INK} strokeWidth="1.15" />
+      <rect x="15" y="6.5" width="2.2" height="2.7" rx="0.8" fill="#ffe066" stroke={INK} strokeWidth="1.15" />
+      <rect x="6.8" y="14.8" width="2.2" height="2.7" rx="0.8" fill="#ffe066" stroke={INK} strokeWidth="1.15" />
+      <rect x="15" y="14.8" width="2.2" height="2.7" rx="0.8" fill="#ffe066" stroke={INK} strokeWidth="1.15" />
+      <rect x="8.2" y="2.5" width="7.6" height="19" rx="3.8" fill="#ff947c" stroke={INK} strokeWidth="1.6" />
+      <rect x="9.7" y="5.1" width="4.6" height="13.8" rx="2.3" fill="#373540" />
       <path d="M12 6.8v10.4" stroke="#fff4e0" strokeWidth="1.2" strokeLinecap="round" />
+      <circle cx="12" cy="12" r="1.4" fill="#ffd166" />
     </g>
   ),
   randomize: (
     <>
-      <rect x="4.5" y="4.5" width="15" height="15" rx="3.5" fill="#fff7df" stroke={INK} strokeWidth="1.65" />
-      <circle cx="8.8" cy="8.8" r="1.4" fill="#ff8fa3" />
-      <circle cx="15.2" cy="8.8" r="1.4" fill="#6fd0b4" />
-      <circle cx="12" cy="12" r="1.45" fill="#ffd166" stroke={INK} strokeWidth="0.6" />
-      <circle cx="8.8" cy="15.2" r="1.4" fill="#7cc6fe" />
-      <circle cx="15.2" cy="15.2" r="1.4" fill="#a59cf5" />
+      <rect x="4.2" y="4.2" width="15.6" height="15.6" rx="3.6" fill="#fff7df" stroke={INK} strokeWidth="1.65" />
+      <path d="M6.5 6h11" stroke="#ffffff" strokeWidth="1.1" strokeLinecap="round" />
+      <circle cx="8.6" cy="8.6" r="1.45" fill="#ff8fa3" stroke={INK} strokeWidth="0.6" />
+      <circle cx="15.4" cy="8.6" r="1.45" fill="#6fd0b4" stroke={INK} strokeWidth="0.6" />
+      <circle cx="12" cy="12" r="1.55" fill="#ffd166" stroke={INK} strokeWidth="0.7" />
+      <circle cx="8.6" cy="15.4" r="1.45" fill="#7cc6fe" stroke={INK} strokeWidth="0.6" />
+      <circle cx="15.4" cy="15.4" r="1.45" fill="#a59cf5" stroke={INK} strokeWidth="0.6" />
     </>
   ),
 };

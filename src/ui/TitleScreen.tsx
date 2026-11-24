@@ -264,6 +264,12 @@ export function TitleScreen() {
                 />
               )}
             </div>
+            <span className="ss-hero-stamp" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M8 1.5 9.8 5.6l4.4.5-3.3 2.9.9 4.3L8 11.1l-3.8 2.2.9-4.3-3.3-2.9 4.4-.5Z" fill="#ffd166" stroke="#2b2622" strokeWidth="1.4" strokeLinejoin="round" />
+              </svg>
+              <span>MEADOW EDITION · NO. 01</span>
+            </span>
           </div>
         </div>
       </div>
