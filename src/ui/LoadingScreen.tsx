@@ -59,107 +59,70 @@ export function LoadingScreen({ skipTitle }: { skipTitle: boolean }) {
             <path d="M2 7 C60 4 110 9 170 6 S300 4 398 7" pathLength={100} className="ss-line-ink" />
           </svg>
           <div className="ss-loader-rider">
-            <svg className="ss-loader-skater" viewBox="36 2 102 82" fill="none">
+            <svg className="ss-loader-skater" viewBox="10 6 116 104" fill="none">
               {/* Trailing chalk & meadow dust puffs */}
               <g className="ss-dust-puff">
-                <circle cx="48" cy="73" r="4" fill="#efe4cf" stroke="#2b2622" strokeWidth="1.5" />
-                <circle cx="41.5" cy="70.5" r="2.7" fill="#fffdf8" stroke="#2b2622" strokeWidth="1.3" />
-                <path d="M39 63h8.5M42 58.5h6" stroke="#b8ac99" strokeWidth="1.7" strokeLinecap="round" />
+                <circle cx="20" cy="96" r="4.2" fill="#e6dac3" stroke="#2b2622" strokeWidth="1.8" />
+                <circle cx="13.5" cy="93" r="2.8" fill="#faf4e6" stroke="#2b2622" strokeWidth="1.5" />
               </g>
               <g className="ss-skater-bob">
-                {/* 3/4 Kicktail Coral Skateboard with grip top & aluminum trucks */}
-                <g transform="rotate(-4 94 70)">
+                {/* 3D Perspective Concave Skateboard with Maple Edge & Cylindrical Wheels */}
+                <g transform="rotate(-4 70 90)">
+                  <ellipse cx="46" cy="98" rx="5.8" ry="6.2" fill="#cfc1a8" stroke="#2b2622" strokeWidth="2.2" />
+                  <ellipse cx="90" cy="98" rx="5.8" ry="6.2" fill="#cfc1a8" stroke="#2b2622" strokeWidth="2.2" />
                   <path
-                    d="M54 65.5c4 2.6 9.5 3.3 18 3.3h42c8.5 0 14-.7 18-3.3"
-                    stroke="#ff6b8b"
-                    strokeWidth="7.4"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d="M57.5 63.9c3.5 2.2 8.5 2.8 15.5 2.8h40c7 0 12-.6 15.5-2.8"
-                    stroke="#35333e"
-                    strokeWidth="2.4"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d="M54 65.5c4 2.6 9.5 3.3 18 3.3h42c8.5 0 14-.7 18-3.3"
+                    d="M24 89 C28 93.8 37 95 48 95 L90 95 C101 95 110 93.2 114 87.5 C110 89.8 101 90.8 90 90.8 L48 90.8 C37 90.8 28 90 24 89 Z"
+                    fill="#f26d5b"
                     stroke="#2b2622"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
+                    strokeWidth="2.4"
+                    strokeLinejoin="round"
                   />
-                  {/* Aluminum truck hangers */}
-                  <path d="M69 71h7l-1.4 3.5h-4.2ZM111 71h7l-1.4 3.5h-4.2Z" fill="#cfd5df" stroke="#2b2622" strokeWidth="1.5" strokeLinejoin="round" />
-                  <g className="ss-wheel" style={{ transformOrigin: '72.5px 77px' }}>
-                    <circle cx="72.5" cy="77" r="5.4" fill="#fbf3e1" stroke="#2b2622" strokeWidth="2.1" />
-                    <circle cx="72.5" cy="77" r="2" fill="#ff6b8b" stroke="#2b2622" strokeWidth="1" />
-                    <circle cx="72.5" cy="73.6" r="0.85" fill="#2b2622" />
-                    <circle cx="69.7" cy="78.6" r="0.85" fill="#2b2622" />
-                    <circle cx="75.3" cy="78.6" r="0.85" fill="#2b2622" />
+                  <path
+                    d="M23.5 87.4 C28 84.8 37 84.4 48 84.4 L90 84.4 C100.5 84.4 108.5 83 114.5 85.2 C110 90.2 101 91.8 90 91.8 L48 91.8 C37 91.8 28 90.8 23.5 87.4 Z"
+                    fill="#35333c"
+                    stroke="#2b2622"
+                    strokeWidth="2.4"
+                    strokeLinejoin="round"
+                  />
+                  <path d="M25 87.8 C29.5 91 38 91.8 48 91.8 L90 91.8 C101 91.8 109 90.2 113.5 85.8" stroke="#f3dfc0" strokeWidth="1.6" strokeLinecap="round" />
+                  <path d="M43 93.5h10l-1.8 5.2h-6.4ZM87 93.5h10l-1.8 5.2h-6.4Z" fill="#9aa2b0" stroke="#2b2622" strokeWidth="2.1" strokeLinejoin="round" />
+                  <g className="ss-wheel" style={{ transformOrigin: '43.5px 102px' }}>
+                    <ellipse cx="43.5" cy="102" rx="5.5" ry="6" fill="#f7efe0" stroke="#2b2622" strokeWidth="2.3" />
+                    <ellipse cx="43.5" cy="102" rx="2.1" ry="2.4" fill="#4a423d" />
                   </g>
-                  <g className="ss-wheel" style={{ transformOrigin: '114.5px 77px' }}>
-                    <circle cx="114.5" cy="77" r="5.4" fill="#fbf3e1" stroke="#2b2622" strokeWidth="2.1" />
-                    <circle cx="114.5" cy="77" r="2" fill="#ff6b8b" stroke="#2b2622" strokeWidth="1" />
-                    <circle cx="114.5" cy="73.6" r="0.85" fill="#2b2622" />
-                    <circle cx="111.7" cy="78.6" r="0.85" fill="#2b2622" />
-                    <circle cx="117.3" cy="78.6" r="0.85" fill="#2b2622" />
+                  <g className="ss-wheel" style={{ transformOrigin: '87.5px 102px' }}>
+                    <ellipse cx="87.5" cy="102" rx="5.5" ry="6" fill="#f7efe0" stroke="#2b2622" strokeWidth="2.3" />
+                    <ellipse cx="87.5" cy="102" rx="2.1" ry="2.4" fill="#4a423d" />
                   </g>
                 </g>
 
-                {/* Four planted dark-cocoa legs in skate crouch */}
-                <path d="M72 54.5 70 65.5M79 55 78 65.5M97 54 99.5 64M104 53 107.5 63.2" stroke="#2b221f" strokeWidth="6" strokeLinecap="round" />
-                <path d="M72 54.5 70 65.5M79 55 78 65.5M97 54 99.5 64M104 53 107.5 63.2" stroke="#4a3b35" strokeWidth="3.2" strokeLinecap="round" />
+                {/* Tapered Polygon Sheep Legs */}
+                <path d="M44 73 L50 72 L54 87 L48.5 88 Z" fill="#2c221e" stroke="#2b2622" strokeWidth="2.3" strokeLinejoin="round" />
+                <path d="M72 70 L78 69 L84 85 L78.5 86 Z" fill="#2c221e" stroke="#2b2622" strokeWidth="2.3" strokeLinejoin="round" />
+                <path d="M52 73 L58 72 L62 86.5 L56.5 87.5 Z" fill="#3d302a" stroke="#2b2622" strokeWidth="2.3" strokeLinejoin="round" />
+                <path d="M80 69 L86 68 L92 84.5 L86.5 85.5 Z" fill="#3d302a" stroke="#2b2622" strokeWidth="2.3" strokeLinejoin="round" />
 
-                {/* Fluffy tail & cloud-scalloped wool coat */}
-                <circle cx="55.5" cy="46.5" r="5.2" fill="#efe4cf" stroke="#2b2622" strokeWidth="2.1" />
+                {/* Volumetric 3-Layer Cloud Fleece */}
+                <path d="M27 69c-3.5-.5-5.8-3.8-5-7.2.6-2.5 2.7-4.3 5.2-4.6 1.5-2 4.2-2.6 6.4-1.5l1 11.5c-2.2 2.1-5 2.2-7.6 1.8Z" fill="#dfd1b8" stroke="#2b2622" strokeWidth="2.4" strokeLinejoin="round" />
                 <path
-                  d="M63.5 56.5c-5.6-.4-9.6-4.6-9.2-9.8.3-3.5 2.4-6.5 5.6-7.8-.4-6 4.2-11.1 10.4-11.4 2.5-.1 4.9.7 6.8 2.2 2.8-3.5 7.4-5.5 12.2-4.8 6.8.9 11.8 6.6 11.6 13.2 3.4 1.8 5.4 5.3 5 9.2-.6 5.3-5.2 9.2-10.8 9.2-3.1 2.3-7.5 3.2-11.5 1.8-3.5 2-8.2 2.2-11.9-.1-2.6 1.1-5.6 1.6-8.2 1.3Z"
-                  fill="#fffdf8"
+                  d="M36 76.5c-6.5-.8-11.2-6.4-10.4-12.8.5-3.8 2.8-7 6.1-8.6-.4-6.4 3.8-12.2 10.2-13.5 2.2-5.4 7.6-8.9 13.6-8.6 3.5-4.2 9.2-6.2 14.6-5 6.8 1.5 11.6 7.4 11.8 14.2 4.8 2.4 7.6 7.5 6.8 13-.7 5-4.4 9-9.2 10.2-2.5 4.8-7.8 7.6-13.2 6.8-3.6 3.6-9.1 4.9-13.9 3.1-3.8 2.6-8.8 2.9-12.9.6-1.1.5-2.3.7-3.5.6Z"
+                  fill="#f7f0e2"
                   stroke="#2b2622"
-                  strokeWidth="2.4"
+                  strokeWidth="2.7"
                   strokeLinejoin="round"
                 />
-                <path d="M62.5 52.5c5 3.1 11.5 3.4 16.8.6 5 2.6 11.2 2.3 16.2-.9" stroke="#e2d2b8" strokeWidth="3.4" strokeLinecap="round" />
-                <path d="M66 33.5c2.6-2.3 6.5-2.9 9.7-1.3M71.5 43c-1.5 2.3-.6 5.2 2 6.3M82 39.8c-1.5 2.3-.6 5.2 2 6.3" stroke="#e5d6be" strokeWidth="2.1" strokeLinecap="round" />
+                <path d="M29.5 66.5c2.5 4.8 8 7.2 13.2 5.8 3.5 3.2 8.8 3.8 13 1.4 4.4 2.5 10.2 1.8 13.8-1.8 4.6 1.2 9.6-1 11.8-5.2-3.2 2.2-7.5 2.5-11 .8-3.4 3.4-8.8 4-13 1.6-3.8 2.6-9 2.2-12.5-.8-3.8 2.2-8.8 1.8-12.2-1.2-1.1-.2-2.2-.4-3.1-.6Z" fill="#dfd1b7" />
 
-                {/* Fluttering mint knit scarf tails */}
-                <path d="M88 46.5c-7-1.2-13.5.5-18.5 3.8l3.5 4.2c4.8-2.8 10.2-3.8 16.5-2.8Z" fill="#6fd0b4" stroke="#2b2622" strokeWidth="1.9" strokeLinejoin="round" />
-
-                {/* Sculpted 3/4 Cocoa Sheep Head, Droopy Ears & Snout */}
-                <g transform="rotate(-16 86 32.5)">
-                  <ellipse cx="83" cy="33" rx="7.6" ry="3.4" fill="#3a2f2b" stroke="#2b2622" strokeWidth="2.1" />
-                  <ellipse cx="83.4" cy="33.4" rx="4.6" ry="1.5" fill="#d98a8c" />
-                </g>
-                <g transform="rotate(18 117 32)">
-                  <ellipse cx="119" cy="32.5" rx="7.2" ry="3.3" fill="#3a2f2b" stroke="#2b2622" strokeWidth="2.1" />
-                  <ellipse cx="118.6" cy="32.9" rx="4.3" ry="1.45" fill="#d98a8c" />
-                </g>
-                <path
-                  d="M90 34c.3-7.8 6-13 13.4-12.7 7.4.3 12.8 5.8 12.5 13.6-.3 7.5-4.9 15.3-12.8 15.3-7.9 0-13.4-8.4-13.1-16.2Z"
-                  fill="#3a2f2b"
-                  stroke="#2b2622"
-                  strokeWidth="2.4"
-                />
-                <ellipse cx="104" cy="43.5" rx="6.8" ry="4.8" fill="#4e3f3a" />
-
-                {/* Big glossy eyes & rosy cheeks */}
-                <circle cx="97.5" cy="36.8" r="3.3" fill="#141010" stroke="#fffdf9" strokeWidth="1.1" />
-                <circle cx="108.8" cy="37" r="3.3" fill="#141010" stroke="#fffdf9" strokeWidth="1.1" />
-                <circle cx="96.6" cy="35.7" r="1.2" fill="#ffffff" />
-                <circle cx="107.9" cy="35.9" r="1.2" fill="#ffffff" />
-                <ellipse cx="93.4" cy="41.4" rx="3" ry="1.8" fill="#ff8fa3" />
-                <ellipse cx="112.2" cy="41.6" rx="3" ry="1.8" fill="#ff8fa3" />
-                <path d="M101.8 41.6l2 1.8 2-1.8M103.8 43.4v2.4" stroke="#f2bdbd" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M101 45.8q2.8 2 5.6 0" stroke="#f2bdbd" strokeWidth="1.8" strokeLinecap="round" />
-
-                {/* Wool forelock & Chunky Mustard-Gold Ribbed Beanie */}
-                <path d="M91.5 28.4c2.1 2.2 5.8 2.5 8.2.4 2.3 2.1 6.1 2.1 8.4 0 2 1.8 5 1.7 6.8-.3" fill="#fffdf8" stroke="#2b2622" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
-                <g transform="rotate(4 103.5 22)">
-                  <circle cx="103.8" cy="9.2" r="5.2" fill="#fffdf8" stroke="#2b2622" strokeWidth="2.1" />
-                  <path d="M90.2 25.2c.7-8.8 6.4-14 13.5-14s12.5 5.2 13 14Z" fill="#f4b938" stroke="#2b2622" strokeWidth="2.3" strokeLinejoin="round" />
-                  <path d="M97.8 12.5c-1.1 3.6-1.5 7.4-1.4 11.4M109.2 12.5c1.1 3.6 1.5 7.4 1.4 11.4" stroke="#c98e1c" strokeWidth="1.7" strokeLinecap="round" />
-                  <rect x="88.2" y="22" width="30.5" height="6.8" rx="3.4" fill="#ffd666" stroke="#2b2622" strokeWidth="2.15" />
-                  <path d="M94.2 22.8v5.2M99.4 22.8v5.2M104.6 22.8v5.2M109.8 22.8v5.2M114.6 22.8v5.2" stroke="#cc921e" strokeWidth="1.6" strokeLinecap="round" />
-                </g>
+                {/* Sculpted Head, Leaf Ears & Slouchy Mustard Fisherman Beanie */}
+                <path d="M75 43.5 C67 41.5 59.5 43.5 57 47.2 C59.5 50.8 68.5 51.8 75.8 48.2 Z" fill="#362b26" stroke="#2b2622" strokeWidth="2.4" strokeLinejoin="round" />
+                <path d="M99.5 40.8 C105.5 39.5 112 41.2 114 44.4 C112 47.6 105 48.5 99 45.5 Z" fill="#362b26" stroke="#2b2622" strokeWidth="2.4" strokeLinejoin="round" />
+                <path d="M74.5 42.5 C74 35 80.5 30.5 88.5 30.5 C96.5 30.5 102 35.5 102 42.8 C102 49.5 99.5 59.2 92.2 60.5 C85 61.8 75.2 52.5 74.5 42.5 Z" fill="#3a2e29" stroke="#2b2622" strokeWidth="2.6" strokeLinejoin="round" />
+                <ellipse cx="83.5" cy="47.2" rx="2" ry="2.2" fill="#140f0d" />
+                <ellipse cx="95.2" cy="46.6" rx="1.9" ry="2.1" fill="#140f0d" />
+                <path d="M89.2 53.2 L91.4 55.4 L93.6 53.2 M91.4 55.4 L91.4 58.2" stroke="#1d1512" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M72.5 37.5 C71.5 30.5 73.5 25.5 76 23.5 C74.5 20.5 76 16.8 80.5 16.2 C87.5 15.2 96 18.5 100.2 25.5 C102.5 29.2 103.5 33.5 103.2 37.2 Z" fill="#eab949" stroke="#2b2622" strokeWidth="2.5" strokeLinejoin="round" />
+                <path d="M70.8 36.8 C77.5 33.2 95.5 32.8 104.4 36.2 C105.4 38.8 105.2 41.8 103.8 43.6 C95.2 40.5 78.2 40.8 71.2 44.2 C69.8 42.2 69.8 39.2 70.8 36.8 Z" fill="#f5c857" stroke="#2b2622" strokeWidth="2.5" strokeLinejoin="round" />
+                <path d="M76.5 35.8 L76.2 42.2 M82.2 34.9 L82 41.4 M88 34.6 L88 41.1 M93.8 34.8 L94 41.3 M99.2 35.5 L99.5 42" stroke="#c48e20" strokeWidth="1.9" strokeLinecap="round" />
               </g>
             </svg>
           </div>
