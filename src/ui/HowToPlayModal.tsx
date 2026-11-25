@@ -12,7 +12,7 @@ const SECTIONS: readonly Section[] = [
   {
     title: 'Move',
     rows: [
-      { action: 'Select a sheep', keys: <span className="ss-guide-mouse">Click sheep</span> },
+      { action: 'Select / cycle sheep', keys: <><span className="ss-guide-mouse">Click</span><span className="ss-guide-or">or</span><K>Tab</K></> },
       { action: 'Send it rolling', keys: <span className="ss-guide-mouse">Click grass</span> },
       { action: 'Steer', keys: <><K>W</K><K>A</K><K>S</K><K>D</K></> },
       { action: 'Orbit / zoom', keys: <span className="ss-guide-mouse">Drag sky · Scroll</span> },

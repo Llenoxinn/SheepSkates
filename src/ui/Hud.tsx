@@ -299,7 +299,10 @@ function Score() {
   return (
     <div className="score">
       <b ref={ref}>{score.toLocaleString()}</b><span>style</span>
-      <span className={`combo ${combo > 1 ? 'on' : ''}`}>×{combo}</span>
+      <span className={`combo ${combo > 1 ? 'on' : ''} ${combo >= 4 ? 'hot' : ''}`} title="Chain tricks within 2.4s to build multiplier">
+        <i className="combo-fill" ref={el => { overlay.comboFill = el; }} />
+        <em className="combo-txt">×{combo}</em>
+      </span>
     </div>
   );
 }
@@ -401,11 +404,11 @@ export function Hud() {
         ) : selected?.kind === 'prop' ? (
           <span className="swap" key="prop"><span>Drag or <kbd>G</kbd> to move</span><span><kbd>Q</kbd><kbd>R</kbd> rotate</span><span className="opt"><kbd>Ctrl</kbd><kbd>D</kbd> duplicate</span><span className="opt"><kbd>Del</kbd> delete</span><span className="opt"><kbd>Esc</kbd> deselect</span></span>
         ) : selected?.kind === 'sheep' ? (
-          <span className="swap" key="b"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> ride</span><span><kbd>Space</kbd> ollie</span><span className="opt"><kbd>F</kbd> kickflip</span><span className="opt"><kbd>E</kbd> 360</span><span className="opt"><kbd>C</kbd> board</span><span>Click grass to send</span><span className="opt"><kbd>Esc</kbd> deselect</span></span>
+          <span className="swap" key="b"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> ride</span><span><kbd>Space</kbd> ollie</span><span className="opt"><kbd>F</kbd> kickflip</span><span className="opt"><kbd>E</kbd> 360</span><span className="opt"><kbd>C</kbd> board</span><span className="opt"><kbd>Tab</kbd> next sheep</span><span>Click grass to send</span></span>
         ) : buildMode ? (
           <span className="swap" key="build"><span>Click or drag piece to place</span><span className="opt"><kbd>1</kbd>–<kbd>6</kbd> quick arm</span><span className="opt"><kbd>Ctrl</kbd><kbd>Z</kbd> undo</span><span><kbd>B</kbd> close build</span></span>
         ) : (
-          <span className="swap" key="a"><span>Click a sheep or piece to edit</span><span className="opt">Drag to orbit</span><span><kbd>B</kbd> build park</span><span><kbd>N</kbd> new sheep</span></span>
+          <span className="swap" key="a"><span>Click or <kbd>Tab</kbd> a sheep</span><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / <kbd>Space</kbd> instant skate</span><span className="opt">Drag to orbit</span><span><kbd>B</kbd> build park</span><span><kbd>N</kbd> new sheep</span></span>
         )}
       </div>
     </>

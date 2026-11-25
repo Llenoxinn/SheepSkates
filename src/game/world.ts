@@ -17,8 +17,8 @@ import { stepEnvironment, envState } from './weather';
 /* ------------------------------------------------------------------ */
 /* DOM overlay handles (registered by the React HUD)                    */
 /* ------------------------------------------------------------------ */
-export const overlay: { sel: HTMLElement | null; tag: HTMLElement | null; bar: HTMLElement | null; layer: HTMLElement | null; barHover: boolean } = {
-  sel: null, tag: null, bar: null, layer: null, barHover: false,
+export const overlay: { sel: HTMLElement | null; tag: HTMLElement | null; bar: HTMLElement | null; layer: HTMLElement | null; comboFill: HTMLElement | null; barHover: boolean } = {
+  sel: null, tag: null, bar: null, layer: null, comboFill: null, barHover: false,
 };
 
 const MAX_HISTORY = 100;
@@ -300,11 +300,26 @@ class World implements SheepWorld {
   award(name: string, pts: number, x: number, y: number, z: number, big = false, cls = '') {
     if (!this.livePlay) return;
     this.combo = this.comboT > 0 ? Math.min(this.combo + 1, 5) : 1; this.comboT = 2.4;
+    if (overlay.comboFill) overlay.comboFill.style.transform = 'scaleX(1)';
     const total = pts * this.combo; this.score += total;
     useUI.setState({ score: this.score, combo: this.combo });
     this.popText(x, y, z, `${name}! +${total}${this.combo > 1 ? `  ×${this.combo}` : ''}`, cls || (big || this.combo > 2 ? 'big' : ''));
     if (this.combo > 2 || big) Sfx.ding();
-    if (this.combo >= 3 || big) this.confetti(x, y + 0.35, z, this.combo >= 4 ? 42 : 26);
+    if (this.combo >= 3 || big) {
+      this.confetti(x, y + 0.35, z, this.combo >= 4 ? 42 : 26);
+      // Nearby flock members bounce & cheer when witnessing a big combo
+      let witness: Sheep | null = null;
+      let bestD = 5.2;
+      for (const s of this.flock) {
+        if (s === this.selected || s.dying) continue;
+        const d = Math.hypot(s.pos.x - x, s.pos.z - z);
+        if (d < bestD) { bestD = d; witness = s; }
+      }
+      if (witness) {
+        witness.sqV += 4.5;
+        if (this.combo >= 4) this.say(witness, pick(['rad!', 'baaa!', 'steezy!', 'goat!']));
+      }
+    }
   }
   say(s: Sheep, text: string) {
     if (!this.livePlay || !overlay.layer) return;
@@ -377,6 +392,30 @@ class World implements SheepWorld {
     if (this.placingKind) this.cancelPlacement();
     this.selected = null; this.selectedProp = null; this.moveMode = false;
     overlay.sel?.classList.remove('on'); this.syncUI();
+  }
+  cycleSheep(dir: 1 | -1 = 1): Sheep | null {
+    const alive = this.flock.filter(s => !s.dying);
+    if (alive.length === 0) return null;
+    if (!this.selected) {
+      return this.ensureSheepSelected();
+    }
+    const idx = alive.indexOf(this.selected);
+    const next = alive[(idx + dir + alive.length) % alive.length]!;
+    this.select(next);
+    return next;
+  }
+  ensureSheepSelected(): Sheep | null {
+    if (this.selected && !this.selected.dying) return this.selected;
+    let best: Sheep | null = null;
+    let bestScore = Infinity;
+    for (const s of this.flock) {
+      if (s.dying) continue;
+      // Prefer cruising/grinding sheep near the plaza center
+      const dist = Math.hypot(s.pos.x, s.pos.z) - (s.state === 'cruise' ? 2.5 : 0);
+      if (dist < bestScore) { bestScore = dist; best = s; }
+    }
+    if (best) this.select(best);
+    return best;
   }
   toggleBuildMode(on?: boolean) {
     const next = on ?? !useUI.getState().buildMode;
@@ -1097,7 +1136,15 @@ class World implements SheepWorld {
       if (c.m.position.y < PLAZA_TOP) { c.m.position.y = PLAZA_TOP; c.v.y = 0; c.v.x *= 0.7; c.v.z *= 0.7; }
     }
     this.comboT -= dt;
-    if (this.comboT <= 0 && this.combo > 1) { this.combo = 1; useUI.setState({ combo: 1 }); }
+    if (this.combo > 1 && overlay.comboFill) {
+      const ratio = clamp(this.comboT / 2.4, 0, 1);
+      overlay.comboFill.style.transform = `scaleX(${ratio.toFixed(3)})`;
+    }
+    if (this.comboT <= 0 && this.combo > 1) {
+      this.combo = 1;
+      if (overlay.comboFill) overlay.comboFill.style.transform = 'scaleX(0)';
+      useUI.setState({ combo: 1 });
+    }
 
     if (this.shakeAmp > 0.001) {
       this.shakeT += dt * 44;

@@ -233,6 +233,11 @@ export function Flock() {
       if (k === 'b') { world.toggleBuildMode(); return; }
       if (k === 'm') { useUI.setState({ sound: Sfx.toggle() }); return; }
       if (k === 'n') { world.spawn(); return; }
+      if (e.key === 'Tab' && !world.placingKind && !world.moveMode) {
+        e.preventDefault();
+        world.cycleSheep(e.shiftKey ? -1 : 1);
+        return;
+      }
 
       if (useUI.getState().buildMode && BUILD_KEYS[k] && (!world.selected || world.placingKind)) {
         e.preventDefault();
@@ -270,8 +275,14 @@ export function Flock() {
       }
 
       if (!world.selected) {
-        if (k === 'escape' && useUI.getState().buildMode) world.toggleBuildMode(false);
-        return;
+        if (k === 'escape' && useUI.getState().buildMode) { world.toggleBuildMode(false); return; }
+        // Auto-select nearest plaza sheep when the player immediately presses movement or trick keys
+        const autoMove = MOVE_KEYS[k];
+        if (autoMove || k === ' ' || k === 'f' || k === 'e') {
+          if (!world.ensureSheepSelected()) return;
+        } else {
+          return;
+        }
       }
       const mk = MOVE_KEYS[k];
       if (mk) { e.preventDefault(); world.keys[mk] = true; world.startRiding(); return; }
